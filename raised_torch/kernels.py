@@ -7,8 +7,20 @@ import torch
 from utils_plot import check_tensor
 
 
-def raised_cosine_kernel(t, params, dt=1/1000, kernel_zero_base=False):
+def raised_cosine_kernel(t, params):
     """Compute the raised cosine distribution kernel. 
+
+    Parameters
+    ----------
+    t : tensor | array-like
+        timepoints to compute kernel value at
+
+    params : tensor | tuple
+        model parameters (baseline, alpha, mu, sigma)
+
+    Returns
+    -------
+    tensor
     """
 
     t = check_tensor(t)
@@ -19,16 +31,28 @@ def raised_cosine_kernel(t, params, dt=1/1000, kernel_zero_base=False):
     kernel = (1 + torch.cos((t - mu) / sig * np.pi)) / (2 * sig)
     mask_kernel = (t < (mu - sig)) | (t > (mu + sig))
     kernel[mask_kernel] = 0.
-    if kernel_zero_base:
-        kernel = (kernel - kernel.min())
-    kernel = alpha * kernel 
+    kernel = alpha * kernel
 
     return kernel
 
 
-def truncated_gaussian_kernel(t, params, lower, upper, 
-                            dt=1/1000, kernel_zero_base=False):
-    """Compute the truncated normal distribution kernel. 
+def truncated_gaussian_kernel(t, params, lower, upper):
+    """Compute the truncated normal distribution kernel.
+
+    Parameters
+    ----------
+    t : tensor | array-like
+        timepoints to compute kernel value at
+
+    params : tensor | tuple
+        model parameters (baseline, alpha, mu, sigma)
+
+    lower, upper : floats
+        truncation values of kernel's support
+
+    Returns
+    -------
+    tensor
     """
 
     t = check_tensor(t)
@@ -39,9 +63,6 @@ def truncated_gaussian_kernel(t, params, lower, upper,
     kernel = torch.exp(-(t - mu) ** 2 / sig ** 2)
     mask_kernel = (t < lower) | (t > upper)
     kernel[mask_kernel] = 0.
-    if kernel_zero_base:
-        kernel = (kernel - kernel.min())
-    kernel = alpha * kernel / (kernel.sum() * dt)
+    kernel = alpha * kernel
 
     return kernel
-

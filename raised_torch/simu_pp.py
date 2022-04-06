@@ -14,10 +14,9 @@ from tick.plot import plot_point_process
 from kernels import raised_cosine_kernel
 
 
-
 def simu(true_params, simu_params=[50, 1000, 0.5], seed=None,
          plot_intensity=True,):
-    """
+    """Simulate drivers and intensity timestamps
 
     Parameters
     ----------

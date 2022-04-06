@@ -12,19 +12,38 @@ from kernels import raised_cosine_kernel
 
 def compute_loss(loss_name, intensity, acti_t, dt):
     """
+
+    Parameters
+    ----------
+    XXX
+
+    Returns
+    -------
+    XXX
     """
     T = len(intensity) * dt
     if loss_name == 'log-likelihood':
         # negative log-likelihood
-        return (intensity.sum() * dt - torch.log(intensity[acti_t]).sum()) / T
+        return (intensity.sum() * dt - torch.log(intensity[acti_t]).sum())/T
     elif loss_name == 'MSE':
-        return ((intensity ** 2).sum() * dt - 2 * (intensity[acti_t]).sum()) / T
+        return ((intensity ** 2).sum() * dt - 2 * (intensity[acti_t]).sum())/T
     else:
         raise ValueError(
             f"loss must be 'MLE' or 'log-likelihood', got '{loss_name}'"
         )
 
+
 def optimizer(param, lr, solver='SGD'):
+    """
+
+    Parameters
+    ----------
+    XXX
+
+    Returns
+    -------
+    XXX
+    """
     if solver == 'GD':
         return optim.SGD(param, lr=lr)
     elif solver == 'RMSprop':
@@ -36,13 +55,21 @@ def optimizer(param, lr, solver='SGD'):
             f"solver must be 'GD' | 'RMSProp' or 'Adam' ', got '{solver}'"
         )
 
-def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,  test=0.3):
+
+def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
+                  test=0.3):
     """Training loop for torch model.
 
-        Parameters
+    Parameters
     ----------
     true_params : list
-        [mu_0, alpha_true, mu_true, sig_true]"""
+        [mu_0, alpha_true, mu_true, sig_true]
+
+    Returns
+    -------
+    XXX
+
+    """
 
     pobj = []
     pval = []
@@ -73,21 +100,20 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,  test=0.3
         v_loss.backward()
         optimizer.step()
         optimizer.zero_grad()
-        
-        
-        model.weights.data[1] = max(0, model.weights.data[1]) # alpha
-        model.weights.data[3] = max(0, model.weights.data[3]) # sigma
 
-        pobj.append(v_loss.item()) 
+        model.weights.data[1] = max(0, model.weights.data[1])  # alpha
+        model.weights.data[3] = max(0, model.weights.data[3])  # sigma
+
+        pobj.append(v_loss.item())
 
         if test:
             intensity_test = model(driver_torch_test)
 
-            pval.append(compute_loss(model.loss_name, intensity_test, acti_t_test, model.dt).item())
+            pval.append(compute_loss(model.loss_name, intensity_test,
+                                     acti_t_test, model.dt).item())
 
     print(f"Fitting model... done ({np.round(time.time()-start)} s.) ")
     print(f"Estimated parameters: {np.array(model.weights.data)}")
-
 
     res_dict = {'est_intensity': np.array(intensity.detach()),
                 'est_kernel': np.array(model.kernel.detach()),

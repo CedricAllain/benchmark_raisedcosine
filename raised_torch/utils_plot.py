@@ -20,11 +20,12 @@ def check_tensor(x):
 
 
 def plot_global_fig(true_intensity, est_intensity, true_kernel, est_kernel,
-                    pobj, test_intensity=None, pval=None, loss='log-likelihood'):
+                    pobj, test_intensity=None, pval=None,
+                    loss='log-likelihood'):
     """
 
     """
-    fig = plt.figure(figsize=(14,8))
+    fig = plt.figure(figsize=(14, 8))
     gs = plt.GridSpec(2, 2, figure=fig)
 
     ax = fig.add_subplot(gs[0, :])
@@ -45,7 +46,7 @@ def plot_global_fig(true_intensity, est_intensity, true_kernel, est_kernel,
 
     # added these three lines
     lns = lns1 + lns2
-    labs = [l.get_label() for l in lns]
+    labs = [ln.get_label() for ln in lns]
     ax.legend(lns, labs)
 
     ax = fig.add_subplot(gs[1, 1])
