@@ -8,7 +8,10 @@ import time
 import torch
 from torch import nn
 
+
 from kernels import raised_cosine_kernel, truncated_gaussian_kernel
+
+
 
 
 class Model(nn.Module):
@@ -17,15 +20,15 @@ class Model(nn.Module):
     Parameters
     ----------
     t : XXX
-    
+
     params : tuple
         model parameters (baseline, alpha, mu, sigma)
-    
+
     dt : XXX
-    
+
     kernel_name : str, 'gaussian' | 'raised_cosine'
         name of 
-    
+
     loss_name : XXX
 
     """
@@ -48,7 +51,7 @@ class Model(nn.Module):
         Parameters
         ----------
         driver_tt_torch : XXX
- 
+
         Returns
         -------
         intensity : XXX
@@ -57,10 +60,9 @@ class Model(nn.Module):
         mu_0, alpha, mu, sig = self.weights
 
         if self.kernel_name == 'gaussian':
-            self.kernel = truncated_gaussian_kernel(
-                self.t, self.weights, self.dt)
+            self.kernel = truncated_gaussian_kernel(self.t, self.weights)
         elif self.kernel_name == 'raised_cosine':
-            self.kernel = raised_cosine_kernel(self.t, self.weights, self.dt)
+            self.kernel = raised_cosine_kernel(self.t, self.weights)
         else:
             raise ValueError(
                 f"kernel_name must be 'gaussian' | 'raised_cosine',"

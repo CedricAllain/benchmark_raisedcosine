@@ -14,7 +14,7 @@ from tick.plot import plot_point_process
 from kernels import raised_cosine_kernel
 
 
-def simu(true_params, simu_params=[50, 1000, 0.5], seed=None,
+def simu(true_params, simu_params=[50, 1000, 0.5], isi=0.7, seed=None,
          plot_intensity=True,):
     """Simulate drivers and intensity timestamps
 
@@ -34,25 +34,25 @@ def simu(true_params, simu_params=[50, 1000, 0.5], seed=None,
     dt = 1 / L
 
     # simulate data
-    t_value = np.linspace(0, 1, L + 1)[:-1]
-    y_value = np.array(raised_cosine_kernel(t_value, true_params, dt))
+    t_value = np.linspace(0, 1, L + 1)[:-1]  # XXX: here only between 0 and 1
+    kernel_value = np.array(raised_cosine_kernel(t_value, true_params))
 
     # generate driver timestamps
-    isi = 0.7
-    t_k = np.arange(start=0, stop=T - 2 * isi, step=isi)
+    grid_tt = np.arange(start=0, stop=T - 2 * isi, step=isi)
     # sample timestamps
     rng = np.random.RandomState(seed=seed)
-    t_k = rng.choice(t_k, size=int(p_task * len(t_k)),
-                     replace=False).astype(float)
-    t_k = (t_k / dt).astype(int) * dt
+    driver_tt = rng.choice(grid_tt, size=int(p_task * len(grid_tt)),
+                           replace=False).astype(float)
+    driver_tt = (driver_tt / dt).astype(int) * dt
+    driver_tt.sort()
     # create sparse vector
     t = np.arange(0, T + 1e-10, dt)
-    driver_tt = t * 0
-    driver_tt[(t_k * L).astype(int)] += 1
-    intensity_csc = mu_0 + np.convolve(driver_tt, y_value)[:-L+1]
+    driver = t * 0
+    driver[(driver_tt * L).astype(int)] += 1
+    intensity_value = mu_0 + np.convolve(driver, kernel_value)[:-L+1]
 
     #
-    tf = TimeFunction((t, intensity_csc), dt=dt)
+    tf = TimeFunction((t, intensity_value), dt=dt)
     # We define a 1 dimensional inhomogeneous Poisson process with the
     # intensity function seen above
     in_poi = SimuInhomogeneousPoisson(
@@ -66,8 +66,9 @@ def simu(true_params, simu_params=[50, 1000, 0.5], seed=None,
     if plot_intensity:
         plot_point_process(in_poi)
 
-    t_k = (in_poi.timestamps[0] / dt).astype(int) * dt
-    acti_tt = t * 0
-    acti_tt[(t_k * L).astype(int)] += 1
+    acti_tt = (in_poi.timestamps[0] / dt).astype(int) * dt
+    acti_tt.sort()
+    acti = t * 0
+    acti[(acti_tt * L).astype(int)] += 1
 
-    return y_value, intensity_csc, driver_tt, acti_tt, in_poi
+    return kernel_value, intensity_value, driver_tt, driver, acti_tt, acti
