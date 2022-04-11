@@ -245,6 +245,7 @@ def optimizer(param, lr, solver='SGD'):
         )
 
 
+
 def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
                   test=0.3):
     """Training loop for torch model.
@@ -287,7 +288,14 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
         v_loss = compute_loss(model.loss_name, intensity,
                               acti_tt_train, model.dt)
         v_loss.backward()
-        optimizer.step()
+        if type(optimizer).__name__=='LBFGS':
+            def closure():
+                optimizer.zero_grad()
+                return v_loss.item()
+                
+            optimizer.step(closure)
+        else:
+            optimizer.step()
         optimizer.zero_grad()
 
         model.weights.data[1] = max(0, model.weights.data[1])  # alpha

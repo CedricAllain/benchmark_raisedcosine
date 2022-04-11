@@ -21,7 +21,7 @@ def check_tensor(x):
 
 def plot_global_fig(true_intensity, est_intensity, true_kernel, est_kernel,
                     pobj, test_intensity=None, pval=None,
-                    loss='log-likelihood'):
+                    loss='log-likelihood', figtitle=None):
     """
 
     """
@@ -55,6 +55,8 @@ def plot_global_fig(true_intensity, est_intensity, true_kernel, est_kernel,
     ax.yaxis.tick_right()
     ax.legend()
 
+    if figtitle is not None:
+        plt.savefig(figtitle)
     plt.show()
 
     return fig
