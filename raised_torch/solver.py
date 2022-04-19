@@ -299,6 +299,8 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
         optimizer.zero_grad()
 
         model.weights.data[1] = max(0, model.weights.data[1])  # alpha
+        if model.kernel_name == 'raised_cosine':  # ensure kernel stays in R+
+            model.weights.data[2] = max(0, model.weights.data[2])  # u
         model.weights.data[3] = max(0, model.weights.data[3])  # sigma
 
         pobj.append(v_loss.item())

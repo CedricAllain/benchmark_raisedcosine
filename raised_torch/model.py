@@ -38,11 +38,19 @@ class Model(nn.Module):
 
         super().__init__()
 
-        self.weights = nn.Parameter(params)
+        self.kernel_name = kernel_name
+
+        if self.kernel_name == 'gaussian':
+            self.weights = nn.Parameter(params)
+        elif self.kernel_name == 'raised_cosine':
+            baseline, alpha, mu, sigma = params
+            params = baseline, alpha, (mu - sigma), sigma
+            self.weights = nn.Parameter(params)
+
         self.t = t
         self.dt = dt
         self.L = len(self.t)
-        self.kernel_name = kernel_name
+        
         self.loss_name = loss_name
 
     def forward(self, driver_tt_torch):
