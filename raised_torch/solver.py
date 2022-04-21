@@ -137,8 +137,8 @@ def initialize(driver_tt, acti_tt, T, initializer='smart_start', lower=0, upper=
 
     # default values
     if kernel_name == 'raised_cosine':
-        default_m = upper/2
-        default_sigma = upper/2
+        default_m = upper / 2
+        default_sigma = upper / 2
     elif kernel_name == 'gaussian':
         default_m = (upper - lower) / 2
         default_sigma = 0.95 * (upper - lower) / 4
@@ -207,7 +207,7 @@ def compute_loss(loss_name, intensity, acti_t, dt):
         )
 
 
-def optimizer(param, lr, solver='SGD'):
+def optimizer(param, lr, solver='GD'):
     """
 
     Parameters
@@ -284,26 +284,31 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
     start = time.time()
     for i in range(max_iter):
         print(f"Fitting model... {i/max_iter:6.1%}\r", end='', flush=True)
-        intensity = model(driver_tt_train)
-        v_loss = compute_loss(model.loss_name, intensity,
-                              acti_tt_train, model.dt)
-        v_loss.backward()
-        if type(optimizer).__name__=='LBFGS':
-            def closure():
+        
+        if type(optimizer).__name__=='LBFGS':           
+            def closure():                
+                intensity = model(driver_tt_train)
+                v_loss = compute_loss(model.loss_name, intensity, acti_tt_train, model.dt)               
                 optimizer.zero_grad()
-                return v_loss.item()
-                
+                v_loss.backward()
+                pobj.append(v_loss.item()) 
+                return v_loss
             optimizer.step(closure)
+            
         else:
+            optimizer.zero_grad()
+            intensity = model(driver_tt_train)
+            v_loss = compute_loss(model.loss_name, intensity, acti_tt_train, model.dt)
+            v_loss.backward()
             optimizer.step()
-        optimizer.zero_grad()
+            pobj.append(v_loss.item()) 
+        
 
         model.weights.data[1] = max(0, model.weights.data[1])  # alpha
         if model.kernel_name == 'raised_cosine':  # ensure kernel stays in R+
             model.weights.data[2] = max(0, model.weights.data[2])  # u
         model.weights.data[3] = max(0, model.weights.data[3])  # sigma
 
-        pobj.append(v_loss.item())
 
         if test:
             intensity_test = model(driver_tt_test)
@@ -316,7 +321,7 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
     print(f"Fitting model... done ({np.round(time.time()-start)} s.) ")
     print(f"Estimated parameters: {np.array(model.weights.data)}")
 
-    res_dict = {'est_intensity': np.array(intensity.detach()),
+    res_dict = {'est_intensity': np.array(model(driver_tt_train).detach()),
                 'est_kernel': np.array(model.kernel.detach()),
                 'pobj': pobj,
                 'est_params': model.weights.data}

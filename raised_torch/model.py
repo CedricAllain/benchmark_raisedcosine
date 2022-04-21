@@ -40,12 +40,8 @@ class Model(nn.Module):
 
         self.kernel_name = kernel_name
 
-        if self.kernel_name == 'gaussian':
-            self.weights = nn.Parameter(params)
-        elif self.kernel_name == 'raised_cosine':
-            baseline, alpha, mu, sigma = params
-            params = baseline, alpha, (mu - sigma), sigma
-            self.weights = nn.Parameter(params)
+
+        self.weights = nn.Parameter(params)
 
         self.t = t
         self.dt = dt

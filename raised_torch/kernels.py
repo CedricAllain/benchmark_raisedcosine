@@ -26,10 +26,10 @@ def raised_cosine_kernel(t, params):
     t = check_tensor(t)
     params = check_tensor(params)
 
-    _, alpha, u, sig = params  # u = mu - sig
+    _, alpha, a, sig = params  # a = mu - sig
 
-    kernel = (1 + torch.cos((t - u) / sig * np.pi - np.pi)) / (2 * sig)
-    mask_kernel = (t < (u + 2*sig)) | (t > u)
+    kernel = (1 + torch.cos(np.pi * (t - a) / sig  - np.pi)) / (2 * sig)
+    mask_kernel = (t < a) | (t > (a + 2 * sig))
     kernel[mask_kernel] = 0.
     kernel = alpha * kernel
 
