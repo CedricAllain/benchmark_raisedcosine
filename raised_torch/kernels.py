@@ -37,7 +37,7 @@ def raised_cosine_kernel(t, params, reparam=False):
         alpha, m, sig = params[-3:]
         kernel = (1 + torch.cos((t - m) / sig * np.pi)) / (2 * sig)
     mask_kernel = (t < (m - sig)) | (t > (m + sig))
-
+    
     kernel[mask_kernel] = 0.
     kernel = alpha * kernel
 
