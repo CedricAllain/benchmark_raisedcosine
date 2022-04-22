@@ -7,7 +7,7 @@ import torch
 from utils_plot import check_tensor
 
 
-def raised_cosine_kernel(t, params):
+def raised_cosine_kernel(t, params, reparam=False):
     """Compute the raised cosine distribution kernel. 
 
     Parameters
@@ -18,6 +18,9 @@ def raised_cosine_kernel(t, params):
     params : tensor | tuple
         model parameters (baseline, alpha, mu, sigma)
 
+    reparam : bool
+        if True, apply u = m - sigma reparametrization
+
     Returns
     -------
     tensor
@@ -26,10 +29,15 @@ def raised_cosine_kernel(t, params):
     t = check_tensor(t)
     params = check_tensor(params)
 
-    _, alpha, a, sig = params  # a = mu - sig
-
-    kernel = (1 + torch.cos(np.pi * (t - a) / sig  - np.pi)) / (2 * sig)
-    mask_kernel = (t < a) | (t > (a + 2 * sig))
+    if reparam:
+        alpha, u, sig = params[-3:]  # u = mu - sig
+        kernel = (1 + torch.cos((t - u) / sig * np.pi - np.pi)) / (2 * sig)
+        mask_kernel = (t < u) | (t > (u + 2*sig))
+    else:
+        alpha, m, sig = params[-3:]
+        kernel = (1 + torch.cos((t - m) / sig * np.pi)) / (2 * sig)
+    mask_kernel = (t < (m - sig)) | (t > (m + sig))
+    
     kernel[mask_kernel] = 0.
     kernel = alpha * kernel
 
