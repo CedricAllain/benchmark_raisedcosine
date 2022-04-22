@@ -50,6 +50,7 @@ class Model(nn.Module):
         # self.alpha = nn.Parameter(alpha)  # alpha 1darray
         self.n_drivers = self.weights.shape[1]
 
+
         self.t = t
         self.dt = dt
         self.L = len(self.t)
