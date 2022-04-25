@@ -4,6 +4,7 @@
 ##########################################
 
 import numpy as np
+import torch
 
 from tick.base import TimeFunction
 from tick.hawkes import SimuHawkes
@@ -11,11 +12,13 @@ from tick.hawkes import HawkesKernelTimeFunc
 from tick.hawkes import SimuInhomogeneousPoisson
 from tick.plot import plot_point_process
 
-from kernels import raised_cosine_kernel
+from .kernels import raised_cosine_kernel, truncated_gaussian_kernel
+from .utils.utils import check_tensor
 
 
-def simu(true_params, simu_params=[50, 1000, 0.5], isi=0.7, seed=None,
-         plot_intensity=True, reparam=False):
+def simu(baseline, alpha, m, sigma, kernel_name='raised_cosine',
+         simu_params=[50, 1000, 0.5], isi=0.7, seed=42,
+         plot_intensity=False):
     """Simulate drivers and intensity timestamps
 
     Parameters
@@ -26,6 +29,9 @@ def simu(true_params, simu_params=[50, 1000, 0.5], isi=0.7, seed=None,
                                  [0.4, 0.6],   # m
                                  [0.4, 0.2]])  # sigma
 
+    simu_params : 1d array
+        T, L, p_task
+
     Returns
     -------
     intensity_csc
@@ -34,29 +40,44 @@ def simu(true_params, simu_params=[50, 1000, 0.5], isi=0.7, seed=None,
         sparse vector where 1 indicates an intensity activation
     """
 
-    intensity_value = true_params[0][0]
-    n_drivers = true_params.shape[1]
+    T, L, p_task = simu_params
+    dt = 1 / L
+
+    baseline = check_tensor(baseline)
+    alpha = check_tensor(alpha)
+    m = check_tensor(m)
+    sigma = check_tensor(sigma)
+
+    n_drivers = m.shape[0]
 
     # simulate driver events
-    kernel_value = []
     driver_tt = []
     driver = []
 
     # XXX: here only between 0 and 1
     t_value = np.linspace(0, 1, L + 1)[:-1]
 
+    if kernel_name == 'gaussian':
+        kernels = truncated_gaussian_kernel(
+            t_value, alpha, m, sigma)
+    elif kernel_name == 'raised_cosine':
+        u = (m - sigma)
+        kernels = raised_cosine_kernel(
+            t_value, alpha, u, sigma)
+    else:
+        raise ValueError(
+            f"kernel_name must be 'gaussian' | 'raised_cosine',"
+            " got '{self.kernel_name}'"
+        )
+
+    # generate driver timestamps sampling grid
+    grid_tt = np.arange(start=0, stop=(T-2*isi), step=isi)
+
+    seeds = [seed, seed+1]
+
     for i in range(n_drivers):
-        T, L, p_task = simu_params
-        dt = 1 / L
-
-        this_kernel_value = np.array(raised_cosine_kernel(
-            t_value, true_params[1:, i], reparam))
-        kernel_value.append(this_kernel_value)
-
-        # generate driver timestamps
-        grid_tt = np.arange(start=0, stop=T - 2 * isi, step=isi)
         # sample timestamps
-        rng = np.random.RandomState(seed=seed)
+        rng = np.random.RandomState(seed=seeds[i])
         this_driver_tt = rng.choice(grid_tt, size=int(p_task * len(grid_tt)),
                                     replace=False).astype(float)
         this_driver_tt = (this_driver_tt / dt).astype(int) * dt
@@ -67,11 +88,11 @@ def simu(true_params, simu_params=[50, 1000, 0.5], isi=0.7, seed=None,
         this_driver = t * 0
         this_driver[(this_driver_tt * L).astype(int)] += 1
         driver.append(this_driver)
-        intensity_value += np.convolve(this_driver, this_kernel_value)[:-L+1]
 
-    kernel_value = np.array(kernel_value)
-    driver_tt = np.array(driver_tt)
     driver = np.array(driver)
+    intensity_value = baseline + torch.conv_transpose1d(
+        torch.Tensor(driver)[None],
+        kernels[:, None])[0, 0, :-L+1]
 
     # Simulate intensity events
     tf = TimeFunction((t, intensity_value), dt=dt)
@@ -93,4 +114,4 @@ def simu(true_params, simu_params=[50, 1000, 0.5], isi=0.7, seed=None,
     acti = t * 0
     acti[(acti_tt * L).astype(int)] += 1
 
-    return kernel_value, intensity_value, driver_tt, driver, acti_tt, acti
+    return kernels, intensity_value, np.array(driver_tt), driver, acti_tt, acti

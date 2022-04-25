@@ -4,10 +4,11 @@
 
 import numpy as np
 import torch
-from utils_plot import check_tensor
+
+from .utils.utils import check_tensor
 
 
-def raised_cosine_kernel(t, params, reparam=False):
+def raised_cosine_kernel(t, alpha, u, sigma):
     """Compute the raised cosine distribution kernel. 
 
     Parameters
@@ -27,24 +28,25 @@ def raised_cosine_kernel(t, params, reparam=False):
     """
 
     t = check_tensor(t)
-    params = check_tensor(params)
 
-    if reparam:
-        alpha, u, sig = params[-3:]  # u = mu - sig
-        kernel = (1 + torch.cos((t - u) / sig * np.pi - np.pi)) / (2 * sig)
-        mask_kernel = (t < u) | (t > (u + 2*sig))
-    else:
-        alpha, m, sig = params[-3:]
-        kernel = (1 + torch.cos((t - m) / sig * np.pi)) / (2 * sig)
-    mask_kernel = (t < (m - sig)) | (t > (m + sig))
-    
-    kernel[mask_kernel] = 0.
-    kernel = alpha * kernel
+    alpha = check_tensor(alpha)
+    u = check_tensor(u)
+    sigma = check_tensor(sigma)
 
-    return kernel
+    n_drivers = u.shape[0]
+    kernels = []
+    for i in range(n_drivers):
+        kernel = (1 + torch.cos((t - u[i]) / sigma[i] * np.pi - np.pi)) \
+            / (2 * sigma[i])
+        mask_kernel = (t < u[i]) | (t > (u[i] + 2*sigma[i]))
+        kernel[mask_kernel] = 0.
+        kernel = alpha[i] * kernel
+        kernels.append(kernel)
+
+    return torch.stack(kernels, 0).float()
 
 
-def truncated_gaussian_kernel(t, params, lower, upper):
+def truncated_gaussian_kernel(t, alpha, m, sigma, lower, upper):
     """Compute the truncated normal distribution kernel.
 
     Parameters
@@ -64,13 +66,17 @@ def truncated_gaussian_kernel(t, params, lower, upper):
     """
 
     t = check_tensor(t)
-    params = check_tensor(params)
+    alpha = check_tensor(alpha)
+    m = check_tensor(m)
+    sigma = check_tensor(sigma)
 
-    _, alpha, mu, sig = params
+    n_drivers = m.shape[0]
+    kernels = []
+    for i in range(n_drivers):
+        kernel = torch.exp(-(t - m[i]) ** 2 / sigma[i] ** 2)
+        mask_kernel = (t < lower) | (t > upper)
+        kernel[mask_kernel] = 0.
+        kernel = alpha[i] * kernel
+        kernels.append(kernel)
 
-    kernel = torch.exp(-(t - mu) ** 2 / sig ** 2)
-    mask_kernel = (t < lower) | (t > upper)
-    kernel[mask_kernel] = 0.
-    kernel = alpha * kernel
-
-    return kernel
+    return torch.stack(kernels, 0).float()

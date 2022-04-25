@@ -7,11 +7,10 @@ import torch
 import torch.optim as optim
 import time
 
-from kernels import raised_cosine_kernel
-
-
 from scipy.sparse import csr_matrix
 from scipy.sparse import find
+
+from .utils.utils import check_tensor
 EPS = np.finfo(float).eps
 
 
@@ -263,14 +262,14 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
 
     pobj = []  # loss on train data
     pval = []  # loss on test data, if any
-    driver_tt = torch.tensor(driver_tt).float()
-    acti_tt = torch.tensor(acti_tt).float()
+    driver_tt = check_tensor(driver_tt)
+    acti_tt = check_tensor(acti_tt)
 
     if test:
         # operates a train/test split
-        n_test = np.int(np.round(test * len(driver_tt)))
-        driver_tt_train = driver_tt[:-n_test]
-        driver_tt_test = driver_tt[-n_test:]
+        n_test = int(np.round(test * driver_tt.shape[1]))
+        driver_tt_train = driver_tt[:, :-n_test]
+        driver_tt_test = driver_tt[:, -n_test:]
 
         acti_tt_train = acti_tt[:-n_test]
         acti_tt_test = acti_tt[-n_test:].to(torch.bool)
@@ -285,47 +284,50 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
     for i in range(max_iter):
         print(f"Fitting model... {i/max_iter:6.1%}\r", end='', flush=True)
         
-        if type(optimizer).__name__=='LBFGS':           
+        if type(optimizer).__name__ == 'LBFGS':
             def closure():                
                 intensity = model(driver_tt_train)
-                v_loss = compute_loss(model.loss_name, intensity, acti_tt_train, model.dt)               
+                v_loss = compute_loss(
+                    model.loss_name, intensity, acti_tt_train, model.dt)          
                 optimizer.zero_grad()
                 v_loss.backward()
-                pobj.append(v_loss.item()) 
+                pobj.append(v_loss.item())
                 return v_loss
             optimizer.step(closure)
-            
         else:
             optimizer.zero_grad()
             intensity = model(driver_tt_train)
-            v_loss = compute_loss(model.loss_name, intensity, acti_tt_train, model.dt)
+            v_loss = compute_loss(
+                model.loss_name, intensity, acti_tt_train, model.dt)
             v_loss.backward()
             optimizer.step()
-            pobj.append(v_loss.item()) 
-        
-
-        model.weights.data[1] = max(0, model.weights.data[1])  # alpha
-        if model.kernel_name == 'raised_cosine' and model.reparam: 
+            pobj.append(v_loss.item())
+      
+        # projections
+        model.alpha.data = model.alpha.data.clip(0)
+        if model.kernel_name == 'raised_cosine':
             # ensure kernel stays in R+
-            model.weights.data[2] = max(0, model.weights.data[2])  # u
-        model.weights.data[3] = max(0, model.weights.data[3])  # sigma
-
+            model.u.data = model.u.data.clip(0)
+        model.sigma.data = model.sigma.data.clip(0)
 
         if test:
             intensity_test = model(driver_tt_test)
-
             pval.append(compute_loss(model.loss_name,
                                      intensity_test,
                                      acti_tt_test,
                                      model.dt).item())
 
     print(f"Fitting model... done ({np.round(time.time()-start)} s.) ")
-    print(f"Estimated parameters: {np.array(model.weights.data)}")
+    est_params = {name: param.data
+                  for name, param in model.named_parameters()
+                  if param.requires_grad}
+
+    print(f"Estimated parameters: {est_params}")
 
     res_dict = {'est_intensity': np.array(model(driver_tt_train).detach()),
-                'est_kernel': np.array(model.kernel.detach()),
+                'est_kernel': np.array(model.kernels.detach()),
                 'pobj': pobj,
-                'est_params': model.weights.data}
+                'est_params': est_params}
     if test:
         res_dict.update(test_intensity=np.array(intensity_test.detach()),
                         pval=pval,
