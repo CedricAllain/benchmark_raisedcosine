@@ -261,6 +261,7 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
 
     pobj = []  # loss on train data
     pval = []  # loss on test data, if any
+    loop_time = []
     driver_tt = check_tensor(driver_tt)
     acti_tt = check_tensor(acti_tt)
 
@@ -290,6 +291,7 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
 
     start = time.time()
     for i in range(max_iter):
+        start_loop = time.time()
         print(f"Fitting model... {i/max_iter:6.1%}\r", end='', flush=True)
 
         if type(optimizer).__name__ == 'LBFGS':
@@ -327,6 +329,9 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
             hist_u.append(model.u.data)
         hist_sigma.append(model.sigma.data)
 
+
+        loop_time.append(time.time() - start_loop)
+
         if test:
             intensity_test = model(driver_tt_test)
             pval.append(compute_loss(model.loss_name,
@@ -334,7 +339,7 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
                                      acti_tt_test,
                                      model.dt).item())
 
-    print(f"Fitting model... done ({np.round(time.time()-start)} s.) ")
+    print(f"Fitting model... done ({np.round(time.time() - start)} s.) ")
     est_params = {name: param.data
                   for name, param in model.named_parameters()
                   if param.requires_grad}
@@ -354,7 +359,8 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
                 'est_kernel': model.kernels.detach().numpy(),
                 'pobj': pobj,
                 'est_params': est_params,
-                'hist_params': hist_params}
+                'hist_params': hist_params,
+                'loop_time': loop_time}
     if test:
         res_dict.update(test_intensity=np.array(intensity_test.detach()),
                         pval=pval,
