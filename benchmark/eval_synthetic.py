@@ -9,18 +9,18 @@ from raised_torch.solver import initialize, compute_loss, optimizer, training_lo
 
 baseline = 1.
 
-# alpha = [1., 2.]
-# m = [0.4, 0.6]
-# sigma = [0.4, 0.2]
+alpha = [1., 2.]
+m = [0.4, 0.8]
+sigma = [0.4, 0.2]
 
-alpha = [1.]
-m = [0.4]
-sigma = [0.4]
+# alpha = [1.]
+# m = [0.4]
+# sigma = [0.4]
 
 T = 10_000
 L = 100
 dt = 1 / L
-p_task = 0.6
+p_task = 0.3
 t = torch.arange(0, 1, dt)
 
 kernel_name = 'raised_cosine'
@@ -34,7 +34,7 @@ plot_kernels(kernels, t)
 init_params = initialize(driver_tt, acti_tt, T, initializer='smart_start',
                          lower=0, upper=0.8,
                          kernel_name=kernel_name)
-                        
+
 baseline_init, alpha_init, m_init, sigma_init = init_params
 # %% Define model
 test = 0.3
@@ -43,7 +43,7 @@ test = 0.3
 loss_name = 'log-likelihood'
 solver = 'RMSprop'
 step_size = 1e-3
-max_iter = 400
+max_iter = 800
 
 model_raised = Model(t, baseline_init, alpha_init, m_init, sigma_init, dt,
                      kernel_name=kernel_name,
