@@ -244,7 +244,6 @@ def optimizer(param, lr, solver='GD'):
         )
 
 
-
 def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
                   test=0.3):
     """Training loop for torch model.
@@ -280,15 +279,24 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
     driver_t = driver_tt_train.to(torch.bool)
     acti_tt_train = acti_tt_train.to(torch.bool)
 
+    hist_baseline = []
+    hist_alpha = []
+    if model.kernel_name == 'gaussian':
+        hist_m = []
+    elif model.kernel_name == 'raised_cosine':
+        hist_u = []
+    hist_sigma = []
+
+
     start = time.time()
     for i in range(max_iter):
         print(f"Fitting model... {i/max_iter:6.1%}\r", end='', flush=True)
-        
+
         if type(optimizer).__name__ == 'LBFGS':
-            def closure():                
+            def closure():
                 intensity = model(driver_tt_train)
                 v_loss = compute_loss(
-                    model.loss_name, intensity, acti_tt_train, model.dt)          
+                    model.loss_name, intensity, acti_tt_train, model.dt)
                 optimizer.zero_grad()
                 v_loss.backward()
                 pobj.append(v_loss.item())
@@ -302,13 +310,22 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
             v_loss.backward()
             optimizer.step()
             pobj.append(v_loss.item())
-      
+
         # projections
         model.alpha.data = model.alpha.data.clip(0)
         if model.kernel_name == 'raised_cosine':
             # ensure kernel stays in R+
             model.u.data = model.u.data.clip(0)
         model.sigma.data = model.sigma.data.clip(0)
+
+        # history
+        hist_baseline.append(model.baseline.data)
+        hist_alpha.append(model.alpha.data)
+        if model.kernel_name == 'gaussian':
+            hist_m.append(model.m.data)
+        elif model.kernel_name == 'raised_cosine':
+            hist_u.append(model.u.data)
+        hist_sigma.append(model.sigma.data)
 
         if test:
             intensity_test = model(driver_tt_test)
@@ -324,10 +341,20 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
 
     print(f"Estimated parameters: {est_params}")
 
-    res_dict = {'est_intensity': np.array(model(driver_tt_train).detach()),
-                'est_kernel': np.array(model.kernels.detach()),
+    hist_params = {'baseline': torch.stack(hist_baseline, 0).float(),
+                   'alpha': torch.stack(hist_alpha, 0).float(),
+                   'sigma': torch.stack(hist_sigma, 0).float()}
+
+    if model.kernel_name == 'gaussian':
+        hist_params.update(m=torch.stack(hist_m, 0).float())
+    elif model.kernel_name == 'raised_cosine':
+        hist_params.update(u=torch.stack(hist_u, 0).float())
+
+    res_dict = {'est_intensity': model(driver_tt_train).detach().numpy(),
+                'est_kernel': model.kernels.detach().numpy(),
                 'pobj': pobj,
-                'est_params': est_params}
+                'est_params': est_params,
+                'hist_params': hist_params}
     if test:
         res_dict.update(test_intensity=np.array(intensity_test.detach()),
                         pval=pval,
