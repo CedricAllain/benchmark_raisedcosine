@@ -45,22 +45,29 @@ class Model(nn.Module):
 
         self.baseline = nn.Parameter(check_tensor(baseline))
         self.alpha = nn.Parameter(check_tensor(alpha))
-        self.m = nn.Parameter(check_tensor(m))
+        
         self.sigma = nn.Parameter(check_tensor(sigma))
-        # reparametrazion for raised cosine, u = m - sigma
-        self.u = nn.Parameter(self.m - self.sigma)
+        if self.kernel_name == 'gaussian':
+            self.m = nn.Parameter(check_tensor(m))
+        elif self.kernel_name == 'raised_cosine':
+            self.m = nn.Parameter(check_tensor(m), requires_grad=False)
+            # reparametrazion for raised cosine, u = m - sigma
+            self.u = nn.Parameter(self.m - self.sigma)
+        else:
+            raise ValueError(
+                f"kernel_name must be 'gaussian' | 'raised_cosine',"
+                " got '{self.kernel_name}'"
+            )
 
         self.t = t
 
         # compute initial kernels
         self.compute_kernels()
-
+        
         self.dt = dt
         self.L = len(self.t)
-
         self.loss_name = loss_name
         
-
     def compute_kernels(self):
         if self.kernel_name == 'gaussian':
             self.kernels = truncated_gaussian_kernel(
