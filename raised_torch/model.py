@@ -9,7 +9,8 @@ import torch
 from torch import nn
 
 
-from kernels import raised_cosine_kernel, truncated_gaussian_kernel
+from .kernels import raised_cosine_kernel, truncated_gaussian_kernel
+from .utils.utils import check_tensor
 
 
 class Model(nn.Module):
@@ -34,7 +35,7 @@ class Model(nn.Module):
 
     """
 
-    def __init__(self, t, params, reparam=False, dt=1/100,
+    def __init__(self, t, baseline, alpha, m, sigma, reparam=False, dt=1/100,
                  kernel_name='raised_cosine', loss_name='log-likelihood'):
 
         super().__init__()
@@ -42,51 +43,54 @@ class Model(nn.Module):
         self.kernel_name = kernel_name
         self.reparam = reparam
 
-        if self.kernel_name == 'raised_cosine' and self.reparam:
-            # reparametrization, u = (mu - sigma)
-            params[2] = params[2] - params[3]
-
-        self.weights = nn.Parameter(params)
-        # self.alpha = nn.Parameter(alpha)  # alpha 1darray
-        self.n_drivers = self.weights.shape[1]
-
+        self.baseline = nn.Parameter(check_tensor(baseline))
+        self.alpha = nn.Parameter(check_tensor(alpha))
+        self.m = nn.Parameter(check_tensor(m))
+        self.sigma = nn.Parameter(check_tensor(sigma))
+        # reparametrazion for raised cosine, u = m - sigma
+        self.u = nn.Parameter(self.m - self.sigma)
 
         self.t = t
+
+        # compute initial kernels
+        self.compute_kernels()
+
         self.dt = dt
         self.L = len(self.t)
 
         self.loss_name = loss_name
+        
 
-    def forward(self, driver_tt_torch):
+    def compute_kernels(self):
+        if self.kernel_name == 'gaussian':
+            self.kernels = truncated_gaussian_kernel(
+                self.t, self.alpha, self.m, self.sigma)
+        elif self.kernel_name == 'raised_cosine':
+            self.kernels = raised_cosine_kernel(
+                self.t, self.alpha, self.u, self.sigma)
+        else:
+            raise ValueError(
+                f"kernel_name must be 'gaussian' | 'raised_cosine',"
+                " got '{self.kernel_name}'"
+            )
+
+    def forward(self, driver):
         """Function to be optimised (the intensity).,
 
         Parameters
         ----------
-        driver_tt_torch : XXX
+        driver : 2d torch.Tensor
+            size n_drivers, n_times
 
         Returns
         -------
         intensity : XXX
         """
 
-        intensity = self.weights[0][0]  # baseline
+        self.compute_kernels()
 
-        self.kernel = []
-        for i in range(self.n_drivers):
-            if self.kernel_name == 'gaussian':
-                this_kernel = truncated_gaussian_kernel(
-                    self.t, self.weights[1:, i])
-            elif self.kernel_name == 'raised_cosine':
-                this_kernel = raised_cosine_kernel(
-                    self.t, self.weights[1:, i], self.reparam)
-            else:
-                raise ValueError(
-                    f"kernel_name must be 'gaussian' | 'raised_cosine',"
-                    " got '{self.kernel_name}'"
-                )
-            self.kernel.append(this_kernel)
-            intensity += torch.conv_transpose1d(driver_tt_torch[None, None],
-                                                this_kernel[None, None],
-                                                )[0, 0, :-self.L+1]
+        intensity = self.baseline + torch.conv_transpose1d(
+            check_tensor(driver)[None],
+            self.kernels[:, None])[0, 0, :-self.L+1]
 
         return intensity

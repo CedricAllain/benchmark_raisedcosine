@@ -10,3 +10,4 @@ def test_conv1d(n_drivers):
     res = torch.conv_transpose1d(x[None], k[:, None])
 
     assert res.shape == (1, 1, 119)
+
