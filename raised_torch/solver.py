@@ -350,8 +350,8 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
     elif model.kernel_name == 'raised_cosine':
         hist_params.update(u=torch.stack(hist_u, 0).float())
 
-    res_dict = {'est_intensity': model(driver_tt_train).detach().np(),
-                'est_kernel': model.kernels.detach().np(),
+    res_dict = {'est_intensity': model(driver_tt_train).detach().numpy(),
+                'est_kernel': model.kernels.detach().numpy(),
                 'pobj': pobj,
                 'est_params': est_params,
                 'hist_params': hist_params}
