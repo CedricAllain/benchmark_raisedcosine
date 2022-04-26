@@ -23,6 +23,7 @@ def plot_kernels(kernels, t):
         plt.plot(t, kernel, label=f"kernel {i+1}")
     plt.legend()
 
+
 def plot_global_fig(true_intensity, est_intensity, true_kernel, est_kernel,
                     pobj, test_intensity=None, pval=None,
                     loss='log-likelihood', figtitle=None):
@@ -56,7 +57,8 @@ def plot_global_fig(true_intensity, est_intensity, true_kernel, est_kernel,
     ax = fig.add_subplot(gs[0, 1])
     for i in range(true_kernel.shape[0]):
         ax.plot(est_kernel[i], label=f'Learned kernel {i}', color=COLOR_EST)
-        ax.plot(true_kernel[i], '--', label=f'True kernel {i}', color=COLOR_TRUE)
+        ax.plot(true_kernel[i], '--',
+                label=f'True kernel {i}', color=COLOR_TRUE)
     ax.yaxis.tick_right()
     ax.legend()
 
@@ -65,3 +67,17 @@ def plot_global_fig(true_intensity, est_intensity, true_kernel, est_kernel,
     plt.show()
 
     return fig
+
+
+def plot_hist_params(hist_params):
+    """
+
+    Parameters
+    ----------
+    hist_params : dict of dict
+    """
+
+    fig, axes = plt.subplots(2, 2, figsize=(14, 8))
+
+    for i, param in enumerate(hist_params.keys()):
+        axes = 
