@@ -45,7 +45,7 @@ test = 0.3
 loss_name = 'log-likelihood'
 solver = 'RMSprop'
 step_size = 1e-3
-max_iter = 100
+max_iter = 200
 
 model_raised = Model(t, baseline_init, alpha_init, m_init, sigma_init, dt,
                      kernel_name=kernel_name,

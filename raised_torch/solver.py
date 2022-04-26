@@ -257,7 +257,7 @@ def closure(model, driver_tt_train, acti_tt_train, optimizer):
 
 
 def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
-                  test=0.3, logging=True):
+                  test=0.3, logging=True, device='cpu'):
     """Training loop for torch model.
 
     Parameters
@@ -265,13 +265,19 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
     true_params : list
         [mu_0, alpha_true, mu_true, sig_true]
 
+    device : str
+        'cpu' | 'cuda:0' # cuda:x 
+
     Returns
     -------
     XXX
 
     """
-    driver_tt = check_tensor(driver_tt)
-    acti_tt = check_tensor(acti_tt)
+    driver_tt = check_tensor(driver_tt).to(device)
+    acti_tt = check_tensor(acti_tt).to(device)
+
+    model = model.to(device)
+    optimizer = optimizer.to(device)
 
     if test:
         # operates a train/test split

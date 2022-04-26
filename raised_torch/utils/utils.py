@@ -28,5 +28,3 @@ def kernel_intensity(baseline, driver, kernels, L=100):
     intensity = baseline + torch.conv_transpose1d(
         torch.Tensor(driver)[None], kernels[:, None])[0, 0, :-L+1]
     return intensity.clip(0)
-
-
