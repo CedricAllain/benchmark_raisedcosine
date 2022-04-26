@@ -326,7 +326,8 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
                 alpha=model.alpha.detach().numpy(),
                 m=model.m.detach().numpy(),
                 sigma=model.sigma.detach().numpy(),
-                loss=v_loss.item()
+                loss=v_loss.item(),
+                time=time.time()-start
             ))
         if test:
             intensity_test = model(driver_tt_test)
