@@ -54,7 +54,8 @@ plot_kernels(model_raised.kernels, t)
 
 # %%
 opt = optimizer(model_raised.parameters(), step_size, solver)
-res_dict = training_loop(model_raised, opt, driver, acti, max_iter, test)
+res_dict = training_loop(model_raised, opt, driver, acti, max_iter, test,
+                         device='cuda:3')
 
 # %% plot final figure
 hist = pd.DataFrame(res_dict['hist'])

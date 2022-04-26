@@ -266,7 +266,7 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
         [mu_0, alpha_true, mu_true, sig_true]
 
     device : str
-        'cpu' | 'cuda:0' # cuda:x 
+        'cpu' | 'cuda:0' # cuda:x
 
     Returns
     -------
@@ -277,7 +277,6 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
     acti_tt = check_tensor(acti_tt).to(device)
 
     model = model.to(device)
-    optimizer = optimizer.to(device)
 
     if test:
         # operates a train/test split
@@ -328,11 +327,11 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
         # history
         if logging:
             hist.append(dict(
-                baseline=model.baseline.detach().numpy(),
-                alpha=model.alpha.detach().numpy(),
-                m=model.m.detach().numpy(),
-                sigma=model.sigma.detach().numpy(),
-                loss=v_loss.item(),
+                baseline=model.baseline.detach().cpu().numpy(),
+                alpha=model.alpha.detach().cpu().numpy(),
+                m=model.m.detach().cpu().numpy(),
+                sigma=model.sigma.detach().cpu().numpy(),
+                loss=v_loss.cpu().item(),
                 time=time.time()-start
             ))
         if test:
@@ -349,12 +348,12 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
 
     print(f"Estimated parameters: {est_params}")
 
-    res_dict = {'est_intensity': model(driver_tt_train).detach().numpy(),
-                'est_kernel': model.kernels.detach().numpy(),
+    res_dict = {'est_intensity': model(driver_tt_train).detach().cpu().numpy(),
+                'est_kernel': model.kernels.detach().cpu().numpy(),
                 'est_params': est_params,
                 'hist': hist}
     if test:
-        res_dict.update(test_intensity=np.array(intensity_test.detach()),
+        res_dict.update(test_intensity=intensity_test.detach().cpu(),
                         n_test=n_test)
 
     return res_dict
