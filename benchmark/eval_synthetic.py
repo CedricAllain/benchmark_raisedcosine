@@ -53,7 +53,7 @@ test = 0.3
 loss_name = 'log-likelihood'
 solver = 'RMSprop'
 step_size = 1e-3
-max_iter = 800
+max_iter = 8
 
 model_raised = Model(t, baseline_init, alpha_init, m_init, sigma_init, dt,
                      kernel_name=kernel_name,
@@ -63,10 +63,11 @@ plot_kernels(model_raised.kernels, t)
 # %%
 opt = optimizer(model_raised.parameters(), step_size, solver)
 res_dict = training_loop(model_raised, opt, driver, acti, max_iter, test,
-                         device='cuda:3')
+                         device='cpu')
 
 # %% plot final figure
 hist = pd.DataFrame(res_dict['hist'])
+print(hist['alpha'])
 fig = plot_global_fig(intensity_value,
                       est_intensity=res_dict['est_intensity'],
                       true_kernel=kernels,
@@ -78,17 +79,39 @@ fig = plot_global_fig(intensity_value,
                       figtitle="res_"+solver+'.pdf')
 
 # %%
-colors = ['blue', 'orange', 'green']
-for i, param in enumerate(['alpha', 'm', 'sigma']):
-    print(param)
-    plt.plot(np.array([v[0] for v in hist[param]]),
-             label=f'{param} for kernel {0}', color=colors[0])
-    plt.hlines(true_params[param][0], 0, max_iter,
-               linestyles='--', color=colors[0])
-    plt.plot(np.array([v[1] for v in hist[param]]),
-             label=f'{param} for kernel {1}', color=colors[1])
-    plt.hlines(true_params[param][1], 0, max_iter,
-               linestyles='--', color=colors[1])
-    plt.legend()
+
+
+def plot_hist_params(hist, true_params):
+    """
+    Parameters
+    ----------
+    hist : pandas.DataFrame
+
+    true_params : dict
+    """
+
+    colors = ['blue', 'orange', 'green']
+    fig, axes = plt.subplots(2, 2, figsize=(14, 8), sharex=True)
+    axes = axes.reshape(-1)
+
+    for i, param in enumerate(['baseline', 'alpha', 'm', 'sigma']):
+        ax = axes[i]
+        if param == 'baseline':
+            ax.plot(np.array(hist[param]),
+                    label=f'{param}', color=colors[0])
+            ax.hlines(true_params[param], 0, max_iter,
+                      linestyles='--', color=colors[0])
+        else:
+            for j in range(len(true_params[param])):
+                ax.plot(np.array([v[j] for v in hist[param]]),
+                        label=f'{param}, kernel {j}', color=colors[j])
+                ax.hlines(true_params[param][j], 0, max_iter,
+                          linestyles='--', color=colors[j])
+
+        ax.legend()
+
     plt.show()
+
+
+plot_hist_params(hist, true_params)
 # %%
