@@ -13,6 +13,7 @@ COLOR_TRUE = 'orange'
 COLOR_EST = 'blue'
 COLOR_TEST = 'green'
 
+colors = ['blue', 'orange', 'green']
 
 def plot_kernels(kernels, t):
 
@@ -22,6 +23,7 @@ def plot_kernels(kernels, t):
     for i, kernel in enumerate(kernels):
         plt.plot(t, kernel, label=f"kernel {i+1}")
     plt.legend()
+
 
 def plot_global_fig(true_intensity, est_intensity, true_kernel, est_kernel,
                     pobj, test_intensity=None, pval=None,
@@ -55,8 +57,9 @@ def plot_global_fig(true_intensity, est_intensity, true_kernel, est_kernel,
 
     ax = fig.add_subplot(gs[0, 1])
     for i in range(true_kernel.shape[0]):
-        ax.plot(est_kernel[i], label=f'Learned kernel {i}', color=COLOR_EST)
-        ax.plot(true_kernel[i], '--', label=f'True kernel {i}', color=COLOR_TRUE)
+        ax.plot(est_kernel[i], label=f'Learned kernel {i}', color=colors[i])
+        ax.plot(true_kernel[i], '--',
+                label=f'True kernel {i}', color=colors[i])
     ax.yaxis.tick_right()
     ax.legend()
 
@@ -65,3 +68,17 @@ def plot_global_fig(true_intensity, est_intensity, true_kernel, est_kernel,
     plt.show()
 
     return fig
+
+
+# def plot_hist_params(hist_params):
+#     """
+
+#     Parameters
+#     ----------
+#     hist_params : dict of dict
+#     """
+
+#     fig, axes = plt.subplots(2, 2, figsize=(14, 8))
+
+#     for i, param in enumerate(hist_params.keys()):
+#         axes = 

@@ -1,16 +1,11 @@
 ##########################################
 # Define the class of intensity function
 ##########################################
-
-import numpy as np
-from tqdm import tqdm
-import time
-import torch
 from torch import nn
 
 
-from .kernels import raised_cosine_kernel, truncated_gaussian_kernel
-from .utils.utils import check_tensor
+from .kernels import compute_kernels
+from .utils.utils import check_tensor, kernel_intensity
 
 
 class Model(nn.Module):
@@ -29,7 +24,7 @@ class Model(nn.Module):
     dt : XXX
 
     kernel_name : str, 'gaussian' | 'raised_cosine'
-        name of 
+        name of
 
     loss_name : XXX
 
@@ -45,41 +40,27 @@ class Model(nn.Module):
 
         self.baseline = nn.Parameter(check_tensor(baseline))
         self.alpha = nn.Parameter(check_tensor(alpha))
-        
-        self.sigma = nn.Parameter(check_tensor(sigma))
         if self.kernel_name == 'gaussian':
             self.m = nn.Parameter(check_tensor(m))
         elif self.kernel_name == 'raised_cosine':
-            self.m = nn.Parameter(check_tensor(m), requires_grad=False)
-            # reparametrazion for raised cosine, u = m - sigma
-            self.u = nn.Parameter(self.m - self.sigma)
+            # reparametrazion, u = m - sigma
+            self.m = nn.Parameter(check_tensor(m) - check_tensor(sigma))
         else:
             raise ValueError(
-                f"kernel_name must be 'gaussian' | 'raised_cosine',"
-                " got '{self.kernel_name}'"
+                "kernel_name must be 'gaussian' | 'raised_cosine',"
+                f" got '{self.kernel_name}'"
             )
+        self.sigma = nn.Parameter(check_tensor(sigma))
 
-        self.t = t
+        self.register_buffer('t', t)
 
         # compute initial kernels
-        self.compute_kernels()
-        
+        self.kernels = compute_kernels(
+            self.t, self.alpha, self.m, self.sigma, self.kernel_name)
+
         self.dt = dt
         self.L = len(self.t)
         self.loss_name = loss_name
-        
-    def compute_kernels(self):
-        if self.kernel_name == 'gaussian':
-            self.kernels = truncated_gaussian_kernel(
-                self.t, self.alpha, self.m, self.sigma)
-        elif self.kernel_name == 'raised_cosine':
-            self.kernels = raised_cosine_kernel(
-                self.t, self.alpha, self.u, self.sigma)
-        else:
-            raise ValueError(
-                f"kernel_name must be 'gaussian' | 'raised_cosine',"
-                " got '{self.kernel_name}'"
-            )
 
     def forward(self, driver):
         """Function to be optimised (the intensity).,
@@ -94,10 +75,8 @@ class Model(nn.Module):
         intensity : XXX
         """
 
-        self.compute_kernels()
+        # compute updated kernels
+        self.kernels = compute_kernels(
+            self.t, self.alpha, self.m, self.sigma, self.kernel_name)
 
-        intensity = self.baseline + torch.conv_transpose1d(
-            check_tensor(driver)[None],
-            self.kernels[:, None])[0, 0, :-self.L+1]
-
-        return intensity
+        return kernel_intensity(self.baseline, driver, self.kernels, self.L)

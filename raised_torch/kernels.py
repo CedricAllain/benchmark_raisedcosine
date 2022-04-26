@@ -16,11 +16,12 @@ def raised_cosine_kernel(t, alpha, u, sigma):
     t : tensor | array-like
         timepoints to compute kernel value at
 
-    params : tensor | tuple
-        model parameters (baseline, alpha, mu, sigma)
-
-    reparam : bool
-        if True, apply u = m - sigma reparametrization
+    alpha : 1d array like
+    
+    u : 1d array like
+        u = m - sigma
+    
+    sigma : 1d array like
 
     Returns
     -------
@@ -80,3 +81,25 @@ def truncated_gaussian_kernel(t, alpha, m, sigma, lower, upper):
         kernels.append(kernel)
 
     return torch.stack(kernels, 0).float()
+
+
+def compute_kernels(t, alpha, m, sigma, kernel_name='raised_cosine'):
+    """
+
+    Returns
+    -------
+    kernels : torch.Tensor
+    
+    """
+    if kernel_name == 'gaussian':
+        kernels = truncated_gaussian_kernel(
+            t, alpha, m, sigma)
+    elif kernel_name == 'raised_cosine':
+        kernels = raised_cosine_kernel(
+            t, alpha, m, sigma)
+    else:
+        raise ValueError(
+            f"kernel_name must be 'gaussian' | 'raised_cosine',"
+            " got '{kernel_name}'"
+        )
+    return kernels
