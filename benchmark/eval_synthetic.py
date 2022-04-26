@@ -1,5 +1,6 @@
 # %%
 import numpy as np
+import pandas as pd
 import torch
 import matplotlib.pyplot as plt
 
@@ -21,7 +22,7 @@ sigma = [0.4, 0.2]
 T = 10_000
 L = 100
 dt = 1 / L
-p_task = 0.6
+p_task = 0.3
 t = torch.arange(0, 1, dt)
 
 kernel_name = 'raised_cosine'
@@ -44,7 +45,7 @@ test = 0.3
 loss_name = 'log-likelihood'
 solver = 'RMSprop'
 step_size = 1e-3
-max_iter = 800
+max_iter = 100
 
 model_raised = Model(t, baseline_init, alpha_init, m_init, sigma_init, dt,
                      kernel_name=kernel_name,
@@ -53,30 +54,18 @@ plot_kernels(model_raised.kernels, t)
 
 # %%
 opt = optimizer(model_raised.parameters(), step_size, solver)
-
-# %%
 res_dict = training_loop(model_raised, opt, driver, acti, max_iter, test)
 
-# plot final figure
+# %% plot final figure
+hist = pd.DataFrame(res_dict['hist'])
 fig = plot_global_fig(intensity_value,
                       est_intensity=res_dict['est_intensity'],
                       true_kernel=kernels,
                       est_kernel=res_dict['est_kernel'],
-                      pobj=res_dict['pobj'],
+                      pobj=np.array(hist['loss']),
                       test_intensity=res_dict['test_intensity'],
-                      pval=res_dict['pval'],
+                      pval=np.array(hist['loss_test']),
                       loss=loss_name,
                       figtitle="res_"+solver+'.pdf')
 
-# %%
-
-
-
-hist_alpha = res_dict['hist_params']['alpha']
-
-for i, this_alpha_hist in enumerate(hist_alpha.T):
-    plt.plot(this_alpha_hist, label=f"alpha kernel {i}")
-    plt.legend()
-
-plt.show()
 # %%

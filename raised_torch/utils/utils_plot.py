@@ -69,15 +69,15 @@ def plot_global_fig(true_intensity, est_intensity, true_kernel, est_kernel,
     return fig
 
 
-def plot_hist_params(hist_params):
-    """
+# def plot_hist_params(hist_params):
+#     """
 
-    Parameters
-    ----------
-    hist_params : dict of dict
-    """
+#     Parameters
+#     ----------
+#     hist_params : dict of dict
+#     """
 
-    fig, axes = plt.subplots(2, 2, figsize=(14, 8))
+#     fig, axes = plt.subplots(2, 2, figsize=(14, 8))
 
-    for i, param in enumerate(hist_params.keys()):
-        axes = 
+#     for i, param in enumerate(hist_params.keys()):
+#         axes = 

@@ -45,18 +45,17 @@ class Model(nn.Module):
 
         self.baseline = nn.Parameter(check_tensor(baseline))
         self.alpha = nn.Parameter(check_tensor(alpha))
-
-        self.sigma = nn.Parameter(check_tensor(sigma))
         if self.kernel_name == 'gaussian':
             self.m = nn.Parameter(check_tensor(m))
         elif self.kernel_name == 'raised_cosine':
-            # reparametrazion for raised cosine, u = m - sigma
-            self.m = nn.Parameter(check_tensor(m - sigma))
+            # reparametrazion, u = m - sigma
+            self.m = nn.Parameter(check_tensor(m) - check_tensor(sigma))
         else:
             raise ValueError(
                 f"kernel_name must be 'gaussian' | 'raised_cosine',"
                 " got '{self.kernel_name}'"
             )
+        self.sigma = nn.Parameter(check_tensor(sigma))
 
         self.t = t
 
@@ -67,8 +66,6 @@ class Model(nn.Module):
         self.dt = dt
         self.L = len(self.t)
         self.loss_name = loss_name
-
-    
 
     def forward(self, driver):
         """Function to be optimised (the intensity).,

@@ -45,12 +45,11 @@ def simu(baseline, alpha, m, sigma, kernel_name='raised_cosine',
 
     baseline = check_tensor(baseline)
     alpha = check_tensor(alpha)
+    m = check_tensor(m)
     sigma = check_tensor(sigma)
-    if kernel_name == 'gaussian':
-        m = check_tensor(m)
-    elif kernel_name == 'raised_cosine':
-        m = check_tensor(m - sigma)
-
+    if kernel_name == 'raised_cosine':
+        m -= sigma
+    
     # XXX: here only between 0 and 1
     t_value = np.linspace(0, 1, L + 1)[:-1]
     kernels = compute_kernels(t_value, alpha, m, sigma, kernel_name)
