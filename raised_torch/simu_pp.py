@@ -49,7 +49,7 @@ def simu(baseline, alpha, m, sigma, kernel_name='raised_cosine',
     sigma = check_tensor(sigma)
     if kernel_name == 'raised_cosine':
         m -= sigma
-    
+
     # XXX: here only between 0 and 1
     t_value = np.linspace(0, 1, L + 1)[:-1]
     kernels = compute_kernels(t_value, alpha, m, sigma, kernel_name)
@@ -73,7 +73,7 @@ def simu(baseline, alpha, m, sigma, kernel_name='raised_cosine',
         this_driver[(this_driver_tt * L).astype(int)] += 1
         driver.append(this_driver)
 
-    driver = np.array(driver)
+    driver = check_tensor(driver)
     intensity_value = kernel_intensity(baseline, driver, kernels, L)
 
     # Simulate intensity events

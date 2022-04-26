@@ -1,11 +1,6 @@
 ##########################################
 # Define the class of intensity function
 ##########################################
-
-import numpy as np
-from tqdm import tqdm
-import time
-import torch
 from torch import nn
 
 
@@ -29,7 +24,7 @@ class Model(nn.Module):
     dt : XXX
 
     kernel_name : str, 'gaussian' | 'raised_cosine'
-        name of 
+        name of
 
     loss_name : XXX
 
@@ -52,12 +47,12 @@ class Model(nn.Module):
             self.m = nn.Parameter(check_tensor(m) - check_tensor(sigma))
         else:
             raise ValueError(
-                f"kernel_name must be 'gaussian' | 'raised_cosine',"
-                " got '{self.kernel_name}'"
+                "kernel_name must be 'gaussian' | 'raised_cosine',"
+                f" got '{self.kernel_name}'"
             )
         self.sigma = nn.Parameter(check_tensor(sigma))
 
-        self.t = t
+        self.register_buffer('t', t)
 
         # compute initial kernels
         self.kernels = compute_kernels(
