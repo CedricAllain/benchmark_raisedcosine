@@ -13,6 +13,7 @@ COLOR_TRUE = 'orange'
 COLOR_EST = 'blue'
 COLOR_TEST = 'green'
 
+colors = ['blue', 'orange', 'green']
 
 def plot_kernels(kernels, t):
 
@@ -56,9 +57,9 @@ def plot_global_fig(true_intensity, est_intensity, true_kernel, est_kernel,
 
     ax = fig.add_subplot(gs[0, 1])
     for i in range(true_kernel.shape[0]):
-        ax.plot(est_kernel[i], label=f'Learned kernel {i}', color=COLOR_EST)
+        ax.plot(est_kernel[i], label=f'Learned kernel {i}', color=colors[i])
         ax.plot(true_kernel[i], '--',
-                label=f'True kernel {i}', color=COLOR_TRUE)
+                label=f'True kernel {i}', color=colors[i])
     ax.yaxis.tick_right()
     ax.legend()
 
