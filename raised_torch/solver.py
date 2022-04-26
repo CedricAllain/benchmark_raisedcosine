@@ -317,8 +317,9 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
             v_loss = compute_loss(
                 model.loss_name, intensity, acti_tt_train, model.dt)
             v_loss.backward()
-            assert model.alpha.grad is not None
             optimizer.step()
+
+        print('baseline.grad:', model.baseline.grad)
 
         # projections
         # model.alpha.data = model.alpha.data.clip(0)
@@ -331,7 +332,7 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
         if logging:
             hist.append(dict(
                 baseline=model.baseline.detach().cpu().numpy(),
-                alpha=model.alpha.detach().cpu().numpy(),
+                alpha=model.alpha.detach().cpu().numpy().copy(),
                 m=model.m.detach().cpu().numpy(),
                 sigma=model.sigma.detach().cpu().numpy(),
                 loss=v_loss.cpu().item(),
