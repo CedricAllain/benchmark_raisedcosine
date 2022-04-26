@@ -12,8 +12,9 @@ from raised_torch.solver import initialize, compute_loss, optimizer, training_lo
 baseline = 1.
 
 alpha = [1., 2.]
-m = [0.4, 0.6]
+m = [0.4, 0.8]
 sigma = [0.4, 0.2]
+
 
 # alpha = [1.]
 # m = [0.4]
@@ -25,7 +26,14 @@ dt = 1 / L
 p_task = 0.3
 t = torch.arange(0, 1, dt)
 
+true_params = {'baseline': baseline, 'alpha': alpha, 'sigma': sigma}
+
 kernel_name = 'raised_cosine'
+if kernel_name == 'raised_cosine':
+    true_params['m'] = np.array(m) - np.array(sigma)
+else:
+    true_params['m'] = m
+
 
 kernels, intensity_value, driver_tt, driver, acti_tt, acti = simu(
     baseline, alpha, m, sigma,
@@ -45,7 +53,7 @@ test = 0.3
 loss_name = 'log-likelihood'
 solver = 'RMSprop'
 step_size = 1e-3
-max_iter = 200
+max_iter = 800
 
 model_raised = Model(t, baseline_init, alpha_init, m_init, sigma_init, dt,
                      kernel_name=kernel_name,
@@ -68,4 +76,18 @@ fig = plot_global_fig(intensity_value,
                       loss=loss_name,
                       figtitle="res_"+solver+'.pdf')
 
+# %%
+colors = ['blue', 'orange', 'green']
+for i, param in enumerate(['alpha', 'm', 'sigma']):
+    print(param)
+    plt.plot(np.array([v[0] for v in hist[param]]),
+             label=f'{param} for kernel {0}', color=colors[0])
+    plt.hlines(true_params[param][0], 0, max_iter,
+               linestyles='--', color=colors[0])
+    plt.plot(np.array([v[1] for v in hist[param]]),
+             label=f'{param} for kernel {1}', color=colors[1])
+    plt.hlines(true_params[param][1], 0, max_iter,
+               linestyles='--', color=colors[1])
+    plt.legend()
+    plt.show()
 # %%

@@ -273,11 +273,12 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
     XXX
 
     """
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
     driver_tt = check_tensor(driver_tt).to(device)
     acti_tt = check_tensor(acti_tt).to(device)
 
     model = model.to(device)
-    optimizer = optimizer.to(device)
 
     if test:
         # operates a train/test split
@@ -316,6 +317,7 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
             v_loss = compute_loss(
                 model.loss_name, intensity, acti_tt_train, model.dt)
             v_loss.backward()
+            assert model.alpha.grad is not None
             optimizer.step()
 
         # projections
