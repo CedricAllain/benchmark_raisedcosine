@@ -99,17 +99,19 @@ def plot_hist_params(hist, true_params):
         if param == 'baseline':
             ax.plot(np.array(hist[param]),
                     label=f'{param}', color=colors[0])
-            ax.hlines(true_params[param], 0, max_iter,
+            ax.hlines(true_params[param], 0, max_iter-1,
                       linestyles='--', color=colors[0])
         else:
             for j in range(len(true_params[param])):
                 ax.plot(np.array([v[j] for v in hist[param]]),
                         label=f'{param}, kernel {j}', color=colors[j])
-                ax.hlines(true_params[param][j], 0, max_iter,
+                ax.hlines(true_params[param][j], 0, max_iter-1,
                           linestyles='--', color=colors[j])
 
+        ax.set_xlim(0, max_iter-1)
         ax.legend()
 
+    plt.title("Parameter history through iterations")
     plt.show()
 
 

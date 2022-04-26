@@ -319,8 +319,6 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
             v_loss.backward()
             optimizer.step()
 
-        print('baseline.grad:', model.baseline.grad)
-
         # projections
         # model.alpha.data = model.alpha.data.clip(0)
         if model.kernel_name == 'raised_cosine':
@@ -331,7 +329,7 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
         # history
         if logging:
             hist.append(dict(
-                baseline=model.baseline.detach().cpu().numpy(),
+                baseline=model.baseline.detach().cpu().numpy().copy(),
                 alpha=model.alpha.detach().cpu().numpy().copy(),
                 m=model.m.detach().cpu().numpy(),
                 sigma=model.sigma.detach().cpu().numpy(),
