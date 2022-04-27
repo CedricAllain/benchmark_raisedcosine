@@ -330,7 +330,7 @@ def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,  
                 m=model.m.detach().cpu().numpy(),
                 sigma=model.sigma.detach().cpu().numpy(),
                 loss=v_loss.cpu().item(),
-                time=time.time()-start
+                time_loop=time.time()-start 
             ))
         if test:
             intensity_test = model(driver_tt_test)
