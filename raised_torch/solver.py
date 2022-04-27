@@ -256,7 +256,7 @@ def closure(model, driver_tt_train, acti_tt_train, optimizer):
     return v_loss
 
 
-def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
+def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,  max_iter=100,
                   test=0.3, logging=True, device='cpu'):
     """Training loop for torch model.
 
@@ -296,30 +296,24 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
     acti_tt_train = acti_tt_train.to(torch.bool)
 
     hist = []
+    opt = optimizer(model.parameters(), step_size, solver=solver)
+
     start = time.time()
     for i in range(max_iter):
         print(f"Fitting model... {i/max_iter:6.1%}\r", end='', flush=True)
 
-        if type(optimizer).__name__ == 'LBFGS':
-            # def closure():
-            #     intensity = model(driver_tt_train)
-            #     v_loss = compute_loss(
-            #         model.loss_name, intensity, acti_tt_train, model.dt)
-            #     optimizer.zero_grad()
-            #     v_loss.backward()
-            #     pobj.append(v_loss.item())
-            #     return v_loss
-            v_loss = closure(model, driver_tt_train, acti_tt_train, optimizer)
-            optimizer.step(closure)
+        if type(opt).__name__ == 'LBFGS':
+            v_loss = closure(model, driver_tt_train, acti_tt_train, opt)
+            opt.step(closure)
         else:
-            optimizer.zero_grad()
+            opt.zero_grad()
             intensity = model(driver_tt_train)
             v_loss = compute_loss(
                 model.loss_name, intensity, acti_tt_train, model.dt)
             v_loss.backward()
-            optimizer.step()
+            opt.step()
 
-        print('baseline.grad:', model.baseline.grad)
+        #print('baseline.grad:', model.baseline.grad)
 
         # projections
         # model.alpha.data = model.alpha.data.clip(0)
