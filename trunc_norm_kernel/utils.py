@@ -6,7 +6,17 @@ import itertools
 import numbers
 import numpy as np
 from scipy.sparse import csr_matrix
+import cProfile
 
+
+def profile_this(fn):
+    def profiled_fn(*args, **kwargs):
+        filename = fn.__name__ + '.profile'
+        prof = cProfile.Profile()
+        ret = prof.runcall(fn, *args, **kwargs)
+        prof.dump_stats(filename)
+        return ret
+    return profiled_fn
 
 def convert_variable_multi(var, n=1, repeat=True):
     """Take a variable and make it an array of length n.

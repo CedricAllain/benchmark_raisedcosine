@@ -9,13 +9,13 @@ from functools import partial
 from scipy.sparse import find
 from tqdm import tqdm
 
-from dripp.trunc_norm_kernel.model import TruncNormKernel, Intensity
-from dripp.trunc_norm_kernel.metric import negative_log_likelihood
-from dripp.trunc_norm_kernel.em import compute_nexts
-from dripp.trunc_norm_kernel.simu import simulate_data
-from dripp.trunc_norm_kernel.utils import check_acti_tt, check_driver_tt
+from trunc_norm_kernel.model import TruncNormKernel, Intensity
+from trunc_norm_kernel.metric import negative_log_likelihood
+from trunc_norm_kernel.em import compute_nexts
+from trunc_norm_kernel.simu import simulate_data
+from trunc_norm_kernel.utils import check_acti_tt, check_driver_tt
 
-from dripp.utils import profile_this
+from trunc_norm_kernel.utils import profile_this
 
 EPS = np.finfo(float).eps
 
