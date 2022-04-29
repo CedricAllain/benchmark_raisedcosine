@@ -273,7 +273,6 @@ def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,  
     XXX
 
     """
-    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     driver_tt = check_tensor(driver_tt).to(device)
     acti_tt = check_tensor(acti_tt).to(device)
