@@ -40,7 +40,7 @@ def procedure(t, simu_params, kernel_params, kernel_name='raised_cosine', device
     hist_dic = dict(
              simu_param=simu_params,
              kernel_param=kernel_params,
-             seed=i
+             seed=seed
              #kernel=kernel_value,
              #intensity=intensity_value,
              #driver_tt=driver_tt,
@@ -68,31 +68,31 @@ def procedure(t, simu_params, kernel_params, kernel_name='raised_cosine', device
     
     wanted_keys = ['est_params', 'n_test']
                         
-    hist_dic.update(dict((k, res_dict[k]) for k in wanted_keys if k in res_dict))
+    hist_dic.update(dict((k, res_dict[k]) for k in wanted_keys if k in hist_dic))
 
     return hist_dic
 
-    def benchmark_synthetic(n_simu, simu_params, kernel_params, kernel_name, device):
+def benchmark_synthetic(n_simu, simu_params, kernel_params, kernel_name, device):
     """
     """
     hist = []
     dt = 1 / simu_params['L'][0]
     t = torch.arange(0, 1, dt)
-    
+
     #Combinations of simulation and kernel parameters
     combs_simu = list(itertools.product(*list(simu_params.values())))
     combs_kernel = list(itertools.product(*list(kernel_params.values())))
-    
+
     for i in range(n_simu):
         for l in range(len(combs_simu)):
             for j in range(len(combs_kernel)):
-                
+        
                 hist_dic = procedure(t, simu_params=combs_simu[l], 
-                                     kernel_params=combs_kernel[j],
-                                     kernel_name=kernel_name,
-                                     device=device,
-                                     seed=i)   
+                             kernel_params=combs_kernel[j],
+                             kernel_name=kernel_name,
+                             device=device,
+                             seed=i)   
                 hist.append(hist_dic)   
 
-                
+        
     return hist

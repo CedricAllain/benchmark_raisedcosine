@@ -10,7 +10,7 @@ from raised_torch.simu_pp import simu
 from raised_torch.solver import initialize, optimizer, training_loop
 from raised_torch.utils.utils import check_tensor
 
-from raised_torch.benchmark.benchmark import procedure, benchmark_synthetic
+from benchmark.benchmark_ import procedure, benchmark_synthetic
 
 ############################
 # Simu parameters
@@ -24,7 +24,7 @@ simu_params = {'T': [1000],
                'isi': [0.7, 1],
                'solver': ['Adam', 'RMSprop', 'GD'],
                'step_size': [1e-3],
-               'max_iter': [50]
+               'max_iter': [1000]
                }
 
 ############################
