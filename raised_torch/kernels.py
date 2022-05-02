@@ -83,7 +83,7 @@ def truncated_gaussian_kernel(t, alpha, m, sigma, lower, upper):
     return torch.stack(kernels, 0).float()
 
 
-def compute_kernels(t, alpha, m, sigma, kernel_name='raised_cosine'):
+def compute_kernels(t, alpha, m, sigma, kernel_name='raised_cosine', lower=None, upper=None):
     """
 
     Returns
@@ -93,7 +93,7 @@ def compute_kernels(t, alpha, m, sigma, kernel_name='raised_cosine'):
     """
     if kernel_name == 'gaussian':
         kernels = truncated_gaussian_kernel(
-            t, alpha, m, sigma)
+            t, alpha, m, sigma, lower, upper)
     elif kernel_name == 'raised_cosine':
         kernels = raised_cosine_kernel(
             t, alpha, m, sigma)

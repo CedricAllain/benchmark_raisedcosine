@@ -5,11 +5,11 @@ with truncated Gaussian kernel.
 import numpy as np
 import time
 
-from dripp.trunc_norm_kernel.utils import convert_variable_multi
-from dripp.trunc_norm_kernel.model import TruncNormKernel, Intensity
-from dripp.trunc_norm_kernel.metric import negative_log_likelihood
+from trunc_norm_kernel.utils import convert_variable_multi
+from trunc_norm_kernel.model import TruncNormKernel, Intensity
+from trunc_norm_kernel.metric import negative_log_likelihood
 
-from dripp.utils import profile_this
+from trunc_norm_kernel.utils import profile_this
 
 
 # =======================================
