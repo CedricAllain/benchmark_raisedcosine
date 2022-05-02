@@ -295,7 +295,17 @@ def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,  
     acti_tt_train = acti_tt_train.to(torch.bool)
 
     hist = []
+    # save initial parameters
+    if logging:
+        hist.append(dict(
+            baseline=model.baseline.detach().cpu().numpy().copy(),
+            alpha=model.alpha.detach().cpu().numpy().copy(),
+            m=model.m.detach().cpu().numpy(),
+            sigma=model.sigma.detach().cpu().numpy(),
+        ))
+        
     opt = optimizer(model.parameters(), step_size, solver=solver)
+
 
     start = time.time()
     for i in range(max_iter):
@@ -312,8 +322,6 @@ def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,  
             v_loss.backward()
             opt.step()
 
-        #print('baseline.grad:', model.baseline.grad)
-
         # projections
         # model.alpha.data = model.alpha.data.clip(0)
         if model.kernel_name == 'raised_cosine':
@@ -324,7 +332,7 @@ def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,  
         # history
         if logging:
             hist.append(dict(
-                baseline=model.baseline.detach().cpu().numpy(),
+                baseline=model.baseline.detach().cpu().numpy().copy(),
                 alpha=model.alpha.detach().cpu().numpy().copy(),
                 m=model.m.detach().cpu().numpy(),
                 sigma=model.sigma.detach().cpu().numpy(),
