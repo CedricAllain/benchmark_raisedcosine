@@ -18,7 +18,7 @@ from .utils.utils import check_tensor, kernel_intensity
 
 def simu(baseline, alpha, m, sigma, kernel_name='raised_cosine',
          simu_params=[50, 1000, 0.5], isi=0.7, seed=42,
-         plot_intensity=False):
+         plot_intensity=False, lower=None, upper=None):
     """Simulate drivers and intensity timestamps
 
     Parameters
@@ -52,7 +52,7 @@ def simu(baseline, alpha, m, sigma, kernel_name='raised_cosine',
 
     # XXX: here only between 0 and 1
     t_value = np.linspace(0, 1, L + 1)[:-1]
-    kernels = compute_kernels(t_value, alpha, m, sigma, kernel_name)
+    kernels = compute_kernels(t_value, alpha, m, sigma, kernel_name, lower, upper)
     # generate driver timestamps sampling grid
     grid_tt = np.arange(start=0, stop=(T-2*isi), step=isi)
 

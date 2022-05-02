@@ -5,7 +5,7 @@ import numpy as np
 from scipy.stats import norm
 import matplotlib.pyplot as plt
 
-from dripp.trunc_norm_kernel.utils import \
+from trunc_norm_kernel.utils import \
     get_driver_delays, check_truncation_values
 
 EPS = 1e-5  # np.finfo(float).eps

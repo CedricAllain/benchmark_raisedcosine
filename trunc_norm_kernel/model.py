@@ -9,7 +9,7 @@ from scipy.stats import truncnorm
 import warnings
 import matplotlib.pyplot as plt
 
-from dripp.trunc_norm_kernel.utils import \
+from trunc_norm_kernel.utils import \
     convert_variable_multi, get_driver_delays, check_truncation_values, check_driver_tt, check_acti_tt
 
 
