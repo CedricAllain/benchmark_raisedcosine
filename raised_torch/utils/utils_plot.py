@@ -16,14 +16,16 @@ COLOR_TEST = 'green'
 colors = ['blue', 'orange', 'green']
 
 
-def plot_kernels(kernels, t):
+def plot_kernels(kernels, t, title=None):
 
     if torch.is_tensor(kernels) and kernels.requires_grad:
         kernels = kernels.detach().numpy()
 
     for i, kernel in enumerate(kernels):
         plt.plot(t, kernel, label=f"kernel {i+1}")
+    plt.title(title)
     plt.legend()
+    plt.show()
 
 
 def plot_global_fig(true_intensity, est_intensity, true_kernel, est_kernel,

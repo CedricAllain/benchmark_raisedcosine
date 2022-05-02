@@ -49,7 +49,6 @@ baseline_init, alpha_init, m_init, sigma_init = init_params
 # %% Define model
 test = 0.3
 
-
 loss_name = 'log-likelihood'
 solver = 'RMSprop'
 step_size = 1e-3
@@ -77,5 +76,6 @@ fig = plot_global_fig(intensity_value,
                       pval=np.array(hist['loss_test']),
                       loss=loss_name,
                       figtitle="res_"+solver+'.pdf')
+
 plot_hist_params(hist, true_params)
 # %%

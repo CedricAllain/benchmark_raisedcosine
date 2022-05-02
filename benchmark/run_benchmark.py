@@ -69,7 +69,8 @@ results = benchmark_synthetic(n_simu, simu_params, kernel_params, kernel_name, d
 if not op.exists("results"):
 	os.mkdir("results")
 	
-save_results_path = op.join("results/results_{kernel}_{driver}".format(kernel=kernel_name, driver=n_driver))	
+save_results_path = op.join("results/results_{kernel}_{driver}".format(
+    kernel=kernel_name, driver=n_drivers))
 
 results_dataframe = pd.DataFrame.from_dict(results)
 
