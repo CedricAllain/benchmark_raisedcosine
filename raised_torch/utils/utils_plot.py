@@ -15,6 +15,7 @@ COLOR_TEST = 'green'
 
 colors = ['blue', 'orange', 'green']
 
+
 def plot_kernels(kernels, t):
 
     if torch.is_tensor(kernels) and kernels.requires_grad:
@@ -68,3 +69,39 @@ def plot_global_fig(true_intensity, est_intensity, true_kernel, est_kernel,
     plt.show()
 
     return fig
+
+
+def plot_hist_params(hist, true_params):
+    """
+    Parameters
+    ----------
+    hist : pandas.DataFrame
+
+    true_params : dict
+    """
+
+    colors = ['blue', 'orange', 'green']
+    fig, axes = plt.subplots(2, 2, figsize=(14, 8), sharex=True)
+    axes = axes.reshape(-1)
+
+    max_iter = len(hist)
+
+    # plot baseline
+    ax = axes[0]
+    ax.plot(np.array(hist['baseline']), label='baseline', color=colors[0])
+    ax.hlines(true_params['baseline'], 0, max_iter-1, linestyles='--',
+              color=colors[0])
+    # plot other parameters
+    for i, param in enumerate(['alpha', 'm', 'sigma']):
+        ax = axes[i+1]
+        for j in range(len(true_params[param])):
+            ax.plot(np.array([v[j] for v in hist[param]]),
+                    label=f'{param}, kernel {j}', color=colors[j])
+            ax.hlines(true_params[param][j], 0, max_iter-1,
+                      linestyles='--', color=colors[j])
+
+        ax.set_xlim(0, max_iter-1)
+        ax.legend()
+
+    plt.suptitle("Parameter history through iterations")
+    plt.show()

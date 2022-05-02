@@ -296,6 +296,15 @@ def training_loop(model, optimizer, driver_tt, acti_tt,  max_iter=100,
     acti_tt_train = acti_tt_train.to(torch.bool)
 
     hist = []
+    # save initial parameters
+    if logging:
+        hist.append(dict(
+            baseline=model.baseline.detach().cpu().numpy().copy(),
+            alpha=model.alpha.detach().cpu().numpy().copy(),
+            m=model.m.detach().cpu().numpy(),
+            sigma=model.sigma.detach().cpu().numpy(),
+        ))
+
     start = time.time()
     for i in range(max_iter):
         print(f"Fitting model... {i/max_iter:6.1%}\r", end='', flush=True)
