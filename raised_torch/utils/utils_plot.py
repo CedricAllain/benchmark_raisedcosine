@@ -16,13 +16,21 @@ COLOR_TEST = 'green'
 colors = ['blue', 'orange', 'green']
 
 
-def plot_kernels(kernels, t, title=None):
+def plot_kernels(kernels, t, true_kernels=None, title=None):
 
     if torch.is_tensor(kernels) and kernels.requires_grad:
         kernels = kernels.detach().numpy()
 
+    if true_kernels is not None:
+        if torch.is_tensor(true_kernels) and true_kernels.requires_grad:
+            true_kernels = true_kernels.detach().numpy()
+
     for i, kernel in enumerate(kernels):
-        plt.plot(t, kernel, label=f"kernel {i+1}")
+        plt.plot(t, kernel, color=colors[i], label=f"kernel {i+1}")
+        if true_kernels is not None:
+            plt.plot(t, true_kernels[i], linestyle='--', color=colors[i],
+                     label=f"true kernel {i+1}", alpha=0.8)
+
     plt.title(title)
     plt.legend()
     plt.show()
@@ -60,9 +68,9 @@ def plot_global_fig(true_intensity, est_intensity, true_kernel, est_kernel,
 
     ax = fig.add_subplot(gs[0, 1])
     for i in range(true_kernel.shape[0]):
-        ax.plot(est_kernel[i], label=f'Learned kernel {i}', color=colors[i])
-        ax.plot(true_kernel[i], '--',
-                label=f'True kernel {i}', color=colors[i])
+        ax.plot(est_kernel[i], label=f'Learned kernel {i+1}', color=colors[i])
+        ax.plot(true_kernel[i], '--', label=f'True kernel {i+1}',
+        color=colors[i], alpha=0.8)
     ax.yaxis.tick_right()
     ax.legend()
 
@@ -98,9 +106,9 @@ def plot_hist_params(hist, true_params):
         ax = axes[i+1]
         for j in range(len(true_params[param])):
             ax.plot(np.array([v[j] for v in hist[param]]),
-                    label=f'{param}, kernel {j}', color=colors[j])
+                    label=f'{param}, kernel {j+1}', color=colors[j])
             ax.hlines(true_params[param][j], 0, max_iter-1,
-                      linestyles='--', color=colors[j])
+                      linestyles='--', color=colors[j], alpha=0.8)
 
         ax.set_xlim(0, max_iter-1)
         ax.legend()

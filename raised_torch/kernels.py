@@ -78,7 +78,7 @@ def truncated_gaussian_kernel(t, alpha, m, sigma, lower, upper):
         kernel = torch.exp(-(t - m[i])**2 / (2 * sigma[i]**2))
         mask_kernel = (t < lower) | (t > upper)
         kernel[mask_kernel] = 0.
-        kernel /= kernel.sum() * dt
+        # kernel /= (kernel.sum() * dt)
         kernel *= alpha[i]
         kernels.append(kernel)
 

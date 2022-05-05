@@ -14,7 +14,8 @@ baseline = 1.
 alpha = [1., 2.]
 m = [0.4, 0.8]
 sigma = [0.4, 0.2]
-
+isi = [1, 1.4]
+lower, upper = 0, 1
 
 # alpha = [1.]
 # m = [0.4]
@@ -28,7 +29,7 @@ t = torch.arange(0, 1, dt)
 
 true_params = {'baseline': baseline, 'alpha': alpha, 'sigma': sigma}
 
-kernel_name = 'raised_cosine'
+kernel_name = 'gaussian'
 if kernel_name == 'raised_cosine':
     true_params['m'] = np.array(m) - np.array(sigma)
 else:
@@ -36,13 +37,14 @@ else:
 
 
 kernels, intensity_value, driver_tt, driver, acti_tt, acti = simu(
-    baseline, alpha, m, sigma,
-    kernel_name=kernel_name, simu_params=[T, L, p_task])
+    baseline, alpha, m, sigma, kernel_name=kernel_name,
+    simu_params=[T, L, p_task], lower=lower, upper=upper, isi=isi, seed=0)
 
-plot_kernels(kernels, t)
+
+plot_kernels(kernels, t, title="true kernels")
 
 init_params = initialize(driver_tt, acti_tt, T, initializer='smart_start',
-                         lower=0, upper=0.8,
+                         lower=lower, upper=upper,
                          kernel_name=kernel_name)
 
 baseline_init, alpha_init, m_init, sigma_init = init_params
@@ -52,17 +54,17 @@ test = 0.3
 loss_name = 'log-likelihood'
 solver = 'RMSprop'
 step_size = 1e-3
-max_iter = 800
+max_iter = 400
 
 model_raised = Model(t, baseline_init, alpha_init, m_init, sigma_init, dt,
-                     kernel_name=kernel_name,
-                     loss_name=loss_name)
-plot_kernels(model_raised.kernels, t)
+                     kernel_name=kernel_name, loss_name=loss_name,
+                     lower=lower, upper=upper)
+plot_kernels(model_raised.kernels, t, title='initial kernels')
 
 # %%
-opt = optimizer(model_raised.parameters(), step_size, solver)
-res_dict = training_loop(model_raised, opt, driver, acti, max_iter, test,
-                         device='cpu')
+res_dict = training_loop(model_raised, driver, acti, solver=solver,
+                         step_size=step_size, max_iter=max_iter, test=test,
+                         logging=False, device='cpu')
 
 # %% plot final figure
 hist = pd.DataFrame(res_dict['hist'])
