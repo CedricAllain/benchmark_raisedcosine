@@ -1,6 +1,6 @@
 """
 Plot, for multiple methods, the loss as a function of learning time.
-Only works for truncated gaussian kernel and negative log-likelihood loss functions.
+Only works for truncated gaussian kernel and negative log-likelihood loss.
 """
 
 # %%
@@ -21,11 +21,11 @@ loss_name = 'log-likelihood'
 max_iter = 400
 
 baseline = 1.
-alpha = [1., 2.]
+alpha = [1., 1.]
 m = [0.4, 0.8]
-sigma = [0.4, 0.2]
+sigma = [0.2, 0.05]
 isi = [1, 1.4]
-lower, upper = 0, 1
+lower, upper = 0, 0.8
 
 T = 10_000
 L = 100
@@ -56,14 +56,14 @@ for solver, use_dis in zip(['EM_dis', 'EM_cont'], [True, False]):
 
 
 # %% learn with torch
-for solver in ['RMSprop']:
-    model_raised = Model(t, baseline_init, alpha_init, m_init, sigma_init, dt,
-                         kernel_name=kernel_name, loss_name=loss_name,
-                         lower=lower, upper=upper)
-    res_dict = training_loop(model_raised, driver, acti, solver=solver,
-                             step_size=1e-3, max_iter=max_iter, test=False,
-                             logging=True, device='cpu')
-    dict_hist[solver] = pd.DataFrame(res_dict['hist'])
+# for solver in ['RMSprop']:
+#     model_raised = Model(t, baseline_init, alpha_init, m_init, sigma_init, dt,
+#                          kernel_name=kernel_name, loss_name=loss_name,
+#                          lower=lower, upper=upper)
+#     res_dict = training_loop(model_raised, driver, acti, solver=solver,
+#                              step_size=1e-3, max_iter=max_iter, test=False,
+#                              logging=True, device='cpu')
+#     dict_hist[solver] = pd.DataFrame(res_dict['hist'])
 
 # %% plot final figure
 figsize = (14, 8)
