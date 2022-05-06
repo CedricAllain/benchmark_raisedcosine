@@ -49,7 +49,7 @@ def negative_log_likelihood_1d(intensity, T):
 
     nll -= np.log(intensity(acti_tt)).sum()
 
-    return nll
+    return nll / T
 
 
 def negative_log_likelihood(intensity, T):
@@ -76,7 +76,7 @@ def negative_log_likelihood(intensity, T):
     nll -= np.log(intensity(intensity.acti_tt,
                             driver_delays=intensity.driver_delays)).sum()
 
-    return nll
+    return nll / T
 
 
 def infinite_norm_intensity(intensity_true, intensity_hat):

@@ -12,9 +12,9 @@ from tick.hawkes import HawkesKernelTimeFunc
 from tick.hawkes import SimuInhomogeneousPoisson
 from tick.plot import plot_point_process
 
-from .kernels import raised_cosine_kernel, truncated_gaussian_kernel, compute_kernels
-from .utils.utils import check_tensor, kernel_intensity
-
+from .kernels import compute_kernels
+from .utils.utils import check_tensor, check_array_size, check_driver_tt, \
+    check_acti_tt, kernel_intensity
 
 def simu(baseline, alpha, m, sigma, kernel_name='raised_cosine',
          simu_params=[50, 1000, 0.5], isi=0.7, seed=42,
@@ -50,16 +50,19 @@ def simu(baseline, alpha, m, sigma, kernel_name='raised_cosine',
     if kernel_name == 'raised_cosine':
         m -= sigma
 
+    isi = check_array_size(isi, n=len(alpha))
+
     # XXX: here only between 0 and 1
     t_value = np.linspace(0, 1, L + 1)[:-1]
-    kernels = compute_kernels(t_value, alpha, m, sigma, kernel_name, lower, upper)
-    # generate driver timestamps sampling grid
-    grid_tt = np.arange(start=0, stop=(T-2*isi), step=isi)
+    kernels = compute_kernels(
+        t_value, alpha, m, sigma, kernel_name, lower, upper)
 
     # simulate driver events
     driver_tt = []
     driver = []
     for i in range(m.shape[0]):  # n_drivers = m.shape[0]
+        # generate driver timestamps sampling grid
+        grid_tt = np.arange(start=0, stop=(T-2*isi[i]), step=isi[i])
         # sample timestamps
         rng = np.random.RandomState(seed=seed+i)
         this_driver_tt = rng.choice(grid_tt, size=int(p_task * len(grid_tt)),
@@ -96,4 +99,5 @@ def simu(baseline, alpha, m, sigma, kernel_name='raised_cosine',
     acti = t * 0
     acti[(acti_tt * L).astype(int)] += 1
 
-    return kernels, intensity_value, np.array(driver_tt), driver, acti_tt, acti
+    return kernels, intensity_value, check_driver_tt(driver_tt), driver, \
+        check_acti_tt(acti_tt), acti

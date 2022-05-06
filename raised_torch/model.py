@@ -31,7 +31,8 @@ class Model(nn.Module):
     """
 
     def __init__(self, t, baseline, alpha, m, sigma, reparam=False, dt=1/100,
-                 kernel_name='raised_cosine', loss_name='log-likelihood', lower=None, upper=None):
+                 kernel_name='raised_cosine', loss_name='log-likelihood',
+                 lower=None, upper=None):
 
         super().__init__()
 
@@ -51,14 +52,15 @@ class Model(nn.Module):
                 f" got '{self.kernel_name}'"
             )
         self.sigma = nn.Parameter(check_tensor(sigma))
-        
+
         self.lower = lower
         self.upper = upper
         self.register_buffer('t', t)
 
         # compute initial kernels
         self.kernels = compute_kernels(
-            self.t, self.alpha, self.m, self.sigma, self.kernel_name, self.lower, self.upper)
+            self.t, self.alpha, self.m, self.sigma, self.kernel_name,
+            self.lower, self.upper)
 
         self.dt = dt
         self.L = len(self.t)
@@ -79,6 +81,7 @@ class Model(nn.Module):
 
         # compute updated kernels
         self.kernels = compute_kernels(
-            self.t, self.alpha, self.m, self.sigma, self.kernel_name, self.lower, self.upper)
+            self.t, self.alpha, self.m, self.sigma, self.kernel_name,
+            self.lower, self.upper)
 
         return kernel_intensity(self.baseline, driver, self.kernels, self.L)

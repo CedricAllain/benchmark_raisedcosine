@@ -10,15 +10,20 @@ import time
 from scipy.sparse import csr_matrix
 from scipy.sparse import find
 
-from .utils.utils import check_tensor
+from .utils.utils import check_tensor, check_driver_tt
 EPS = np.finfo(float).eps
+
+torch.autograd.set_detect_anomaly(True)
 
 
 def get_driver_delays(driver_tt, t, lower=0, upper=1):
     """For each driver, compute the sparse delay matrix between the time(s) t
     and the driver timestamps.
+
     Parameters
     ----------
+    driver_tt : 2d array-like
+
     intensity : instance of model.Intensity
     t : int | float | array-like
     Returns
@@ -27,12 +32,9 @@ def get_driver_delays(driver_tt, t, lower=0, upper=1):
     """
 
     t = np.atleast_1d(t)
-    driver_tt = np.atleast_2d(driver_tt)
-    n_drivers = driver_tt.shape[0]
 
     delays = []
-    for p in range(n_drivers):
-        this_driver_tt = driver_tt[p]
+    for this_driver_tt in driver_tt:
         # lower, upper = intensity.kernel[p].lower, intensity.kernel[p].upper
         # Construct a sparse matrix
         this_driver_delays = []
@@ -41,7 +43,7 @@ def get_driver_delays(driver_tt, t, lower=0, upper=1):
         n_col = 1  # number of columns of the full sparse matrix
         for this_t in t:
             this_t_delays = this_t - this_driver_tt[(
-                this_driver_tt >= this_t - upper) & ((this_driver_tt <= this_t - lower))]
+                this_driver_tt >= this_t - upper) & (this_driver_tt <= this_t - lower)]
             n_delays = len(this_t_delays)
             n_col = max(n_col, n_delays)
             if n_delays > 0:
@@ -125,12 +127,12 @@ def initialize_baseline(driver_delays, driver_tt, acti_tt, T, lower, upper):
     return baseline_init
 
 
-def initialize(driver_tt, acti_tt, T, initializer='smart_start', lower=0, upper=1,
-               kernel_name='raised_cosine'):
+def initialize(driver_tt, acti_tt, T, initializer='smart_start', lower=0,
+               upper=1, kernel_name='raised_cosine'):
     """
 
     """
-    driver_tt = np.atleast_2d(driver_tt)
+
     n_drivers = len(driver_tt)
     driver_delays = get_driver_delays(driver_tt, acti_tt, lower, upper)
 
@@ -154,7 +156,7 @@ def initialize(driver_tt, acti_tt, T, initializer='smart_start', lower=0, upper=
 
     if initializer == 'smart_start':
         baseline_init = initialize_baseline(driver_delays, driver_tt, acti_tt,
-                                            T, lower=0, upper=upper)
+                                            T, lower=lower, upper=upper)
         alpha_init = []
         m_init = []
         sigma_init = []
@@ -256,8 +258,8 @@ def closure(model, driver_tt_train, acti_tt_train, optimizer):
     return v_loss
 
 
-def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,  max_iter=100,
-                  test=0.3, logging=True, device='cpu'):
+def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,
+                  max_iter=100, test=0.3, logging=True, device='cpu'):
     """Training loop for torch model.
 
     Parameters
@@ -295,21 +297,21 @@ def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,  
     acti_tt_train = acti_tt_train.to(torch.bool)
 
     hist = []
-    # save initial parameters
-    if logging:
-        hist.append(dict(
-            baseline=model.baseline.detach().cpu().numpy().copy(),
-            alpha=model.alpha.detach().cpu().numpy().copy(),
-            m=model.m.detach().cpu().numpy(),
-            sigma=model.sigma.detach().cpu().numpy(),
-        ))
-        
-    opt = optimizer(model.parameters(), step_size, solver=solver)
 
+    opt = optimizer(model.parameters(), step_size, solver=solver)
 
     start = time.time()
     for i in range(max_iter):
         print(f"Fitting model... {i/max_iter:6.1%}\r", end='', flush=True)
+
+        if logging:
+            hist.append(dict(
+                baseline=model.baseline.detach().cpu().numpy().copy(),
+                alpha=model.alpha.detach().cpu().numpy().copy(),
+                m=model.m.detach().cpu().numpy(),
+                sigma=model.sigma.detach().cpu().numpy(),
+                time_loop=0 if i == 0 else time.time()-start
+            ))
 
         if type(opt).__name__ == 'LBFGS':
             v_loss = closure(model, driver_tt_train, acti_tt_train, opt)
@@ -319,6 +321,14 @@ def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,  
             intensity = model(driver_tt_train)
             v_loss = compute_loss(
                 model.loss_name, intensity, acti_tt_train, model.dt)
+            if test:
+                intensity_test = model(driver_tt_test)
+            if logging:
+                hist[-1].update(loss=v_loss.cpu().item())
+                if test:
+                    hist[-1].update(loss_test=compute_loss(
+                        model.loss_name, intensity_test,
+                        acti_tt_test, model.dt).item())
             v_loss.backward()
             opt.step()
 
@@ -330,23 +340,25 @@ def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,  
         model.sigma.data = model.sigma.data.clip(0)
 
         # history
-        if logging:
-            hist.append(dict(
-                baseline=model.baseline.detach().cpu().numpy().copy(),
-                alpha=model.alpha.detach().cpu().numpy().copy(),
-                m=model.m.detach().cpu().numpy(),
-                sigma=model.sigma.detach().cpu().numpy(),
-                loss=v_loss.cpu().item(),
-                time_loop=time.time()-start 
-            ))
-        if test:
-            intensity_test = model(driver_tt_test)
-            if logging:
-                hist[-1].update(
-                    loss_test=compute_loss(model.loss_name, intensity_test,
-                                           acti_tt_test, model.dt).item())
+        # if logging:
+        #     hist.append(dict(
+        #         baseline=model.baseline.detach().cpu().numpy().copy(),
+        #         alpha=model.alpha.detach().cpu().numpy().copy(),
+        #         m=model.m.detach().cpu().numpy(),
+        #         sigma=model.sigma.detach().cpu().numpy(),
+        #         loss=v_loss.cpu().item(),
+        #         time_loop=time.time()-start
+        #     ))
+        # if test:
+        #     intensity_test = model(driver_tt_test)
+        #     if logging:
+        #         hist[-1].update(
+        #             loss_test=compute_loss(model.loss_name, intensity_test,
+        #                                    acti_tt_test, model.dt).item())
 
-    print(f"Fitting model... done ({np.round(time.time()-start)} s.) ")
+    end_time = time.time() - start
+    print(f"Fitting model... done ({np.round(end_time)} s.) ")
+
     est_params = {name: param.data
                   for name, param in model.named_parameters()
                   if param.requires_grad}
@@ -355,10 +367,29 @@ def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,  
 
     res_dict = {'est_intensity': model(driver_tt_train).detach().cpu().numpy(),
                 'est_kernel': model.kernels.detach().cpu().numpy(),
-                'est_params': est_params,
-                'hist': hist}
+                'est_params': est_params}
+
+    # compute final loss
+    v_loss = compute_loss(model.loss_name, intensity, acti_tt_train, model.dt)
     if test:
+        intensity_test = model(driver_tt_test)
         res_dict.update(test_intensity=intensity_test.detach().cpu(),
                         n_test=n_test)
+
+    if logging:  # save final parameters
+        hist.append(dict(
+            baseline=model.baseline.detach().cpu().numpy().copy(),
+            alpha=model.alpha.detach().cpu().numpy().copy(),
+            m=model.m.detach().cpu().numpy(),
+            sigma=model.sigma.detach().cpu().numpy(),
+            time_loop=end_time,
+            loss=v_loss.cpu().item()
+        ))
+        if test:
+            hist[-1].update(loss_test=compute_loss(
+                model.loss_name, intensity_test,
+                acti_tt_test, model.dt).item())
+
+    res_dict['hist'] = hist
 
     return res_dict

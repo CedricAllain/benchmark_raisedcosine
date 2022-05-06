@@ -10,7 +10,8 @@ import warnings
 import matplotlib.pyplot as plt
 
 from trunc_norm_kernel.utils import \
-    convert_variable_multi, get_driver_delays, check_truncation_values, check_driver_tt, check_acti_tt
+    convert_variable_multi, get_driver_delays, check_truncation_values, \
+    check_driver_tt, check_acti_tt
 
 
 class TruncNormKernel():
@@ -32,9 +33,13 @@ class TruncNormKernel():
         pre-compute kernel's values. If None, the kernel will be exactly
         evaluate at each call. Warning: setting sfreq to None may considerably
         increase computational time. Defaults to 150.
+
+    use_dis : bool
+        If True, use kernel discretization. Defaults to True.
     """
 
-    def __init__(self, lower=0, upper=1, m=None, sigma=None, sfreq=150.):
+    def __init__(self, lower=0, upper=1, m=None, sigma=None, sfreq=150.,
+                 use_dis=True):
 
         check_truncation_values(lower, upper)
 
@@ -51,6 +56,7 @@ class TruncNormKernel():
         self.lower = lower
         self.upper = upper
         self.sfreq = sfreq
+        self.use_dis = use_dis
         self.update(m=m, sigma=sigma)
 
     def update(self, m, sigma):
@@ -62,7 +68,7 @@ class TruncNormKernel():
         self._a = a = (self.lower - self.m) / self.sigma
         self._b = b = (self.upper - self.m) / self.sigma
 
-        if self.sfreq is None:
+        if (self.sfreq is None) or (not self.use_dis):
             self._x_grid = None
             self._pdf_grid = None
         else:
@@ -95,8 +101,8 @@ class TruncNormKernel():
         float | numpy.array
         """
 
-        if self.sfreq is None:
-            return eval(self, x)
+        if (self.sfreq is None) or (not self.use_dis):
+            return self.eval(x)
 
         x = np.asarray(x)
         x_idx = np.asarray(((x - self.lower) * self.sfreq), dtype=int)
