@@ -92,20 +92,21 @@ for method in ['dripp_cont', 'dripp_dis', 'torch']:
     plt.plot(df_loss_L['L'], df_loss_L[method], label=method)
 plt.xlim(min(L_list), max(L_list))
 plt.xlabel('L')
+plt.xticks(L_list)
 plt.title(f'{loss_name} obtained with 3 methods')
 plt.legend()
 plt.show()
 
 # %%
 T_list = [100, 500, 1_000, 5_000, 10_000]
-df_loss_T = [procedure(T, L) for L in L_list]
+df_loss_T = pd.DataFrame([procedure(T, L) for T in T_list])
 
 for method in ['dripp_cont', 'dripp_dis', 'torch']:
     plt.plot(df_loss_T['T'], df_loss_T[method], label=method)
 plt.xlim(min(T_list), max(T_list))
 plt.xlabel('T')
-plt.xticks(T_list)
 plt.xscale('log')
+plt.xticks(T_list)
 plt.title(f'Diff of {loss_name} from dripp continuous')
 plt.legend()
 plt.show()

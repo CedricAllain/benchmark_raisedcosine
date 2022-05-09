@@ -13,8 +13,6 @@ from scipy.sparse import find
 from .utils.utils import check_tensor, check_driver_tt
 EPS = np.finfo(float).eps
 
-torch.autograd.set_detect_anomaly(True)
-
 
 def get_driver_delays(driver_tt, t, lower=0, upper=1):
     """For each driver, compute the sparse delay matrix between the time(s) t
