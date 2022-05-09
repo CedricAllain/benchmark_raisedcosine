@@ -56,7 +56,7 @@ for solver, use_dis in zip(['EM_dis', 'EM_cont'], [True, False]):
 
 
 # %% learn with torch
-for solver in ['RMSprop']:
+for solver in ['RMSprop', 'GD']:
     model_raised = Model(t, baseline_init, alpha_init, m_init, sigma_init, dt,
                          kernel_name=kernel_name, loss_name=loss_name,
                          lower=lower, upper=upper)

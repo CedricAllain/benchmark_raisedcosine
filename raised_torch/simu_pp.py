@@ -67,13 +67,13 @@ def simu(baseline, alpha, m, sigma, kernel_name='raised_cosine',
         rng = np.random.RandomState(seed=seed+i)
         this_driver_tt = rng.choice(grid_tt, size=int(p_task * len(grid_tt)),
                                     replace=False).astype(float)
-        this_driver_tt = (this_driver_tt / dt).astype(int) * dt
+        this_driver_tt = np.unique(np.round(this_driver_tt / dt).astype(int) * dt)
         this_driver_tt.sort()
         driver_tt.append(this_driver_tt)
         # create sparse vector
         t = np.arange(0, T + 1e-10, dt)
         this_driver = t * 0
-        this_driver[(this_driver_tt * L).astype(int)] += 1
+        this_driver[np.round(this_driver_tt * L).astype(int)] += 1
         driver.append(this_driver)
 
     driver = check_tensor(driver)
@@ -94,10 +94,10 @@ def simu(baseline, alpha, m, sigma, kernel_name='raised_cosine',
     if plot_intensity:
         plot_point_process(in_poi)
 
-    acti_tt = (in_poi.timestamps[0] / dt).astype(int) * dt
+    acti_tt = np.unique(np.round(in_poi.timestamps[0] / dt).astype(int) * dt)
     acti_tt.sort()
     acti = t * 0
-    acti[(acti_tt * L).astype(int)] += 1
+    acti[np.round(acti_tt * L).astype(int)] += 1
 
     return kernels, intensity_value, check_driver_tt(driver_tt), driver, \
         check_acti_tt(acti_tt), acti

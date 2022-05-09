@@ -185,12 +185,13 @@ def initialize(driver_tt, acti_tt, T, initializer='smart_start', lower=0,
     return init_params
 
 
-def compute_loss(loss_name, intensity, acti_t, dt):
+def compute_loss(loss_name, intensity, acti, dt):
     """
 
     Parameters
     ----------
-    XXX
+    acti : torch.Tensor
+        sparse tensor, 1 where there is an activation
 
     Returns
     -------
@@ -199,9 +200,9 @@ def compute_loss(loss_name, intensity, acti_t, dt):
     T = len(intensity) * dt
     if loss_name == 'log-likelihood':
         # negative log-likelihood
-        return (intensity.sum() * dt - torch.log(intensity[acti_t]).sum())/T
+        return (intensity.sum() * dt - torch.log(intensity[acti]).sum())/T
     elif loss_name == 'MSE':
-        return ((intensity ** 2).sum() * dt - 2 * (intensity[acti_t]).sum())/T
+        return ((intensity ** 2).sum() * dt - 2 * (intensity[acti]).sum())/T
     else:
         raise ValueError(
             f"loss must be 'MLE' or 'log-likelihood', got '{loss_name}'"
