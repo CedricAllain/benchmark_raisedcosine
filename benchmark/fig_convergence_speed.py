@@ -27,10 +27,10 @@ sigma = [0.2, 0.05]
 isi = [1, 1.4]
 lower, upper = 0, 0.8
 
-T = 10_000
+T = 100_000
 L = 100
 dt = 1 / L
-p_task = 0.6
+p_task = 0.9
 t = torch.arange(0, 1, dt)
 
 kernels, intensity_value, driver_tt, driver, acti_tt, acti = simu(
@@ -45,18 +45,22 @@ baseline_init, alpha_init, m_init, sigma_init = init_params
 
 # final dictionary, keys are method name, values are history DataFrame
 dict_hist = {}
+df_final = pd.DataFrame()
 
 # learn with EM
 for solver, use_dis in zip(['EM_dis', 'EM_cont'], [True, False]):
     _, hist = em_truncated_norm(
-        acti_tt, driver_tt, lower=lower, upper=upper, T=T, sfreq=150.,
+        acti_tt, driver_tt, lower=lower, upper=upper, T=T, sfreq=L,
         use_dis=use_dis, init_params=init_params, alpha_pos=True,
         n_iter=max_iter, verbose=False, disable_tqdm=False, compute_loss=True)
+    # df = pd.DataFrame(hist)
+    # df["solver"] = solver
+    # df_final = pd.concat([df_final, df])
     dict_hist[solver] = pd.DataFrame(hist)
 
 
 # %% learn with torch
-for solver in ['RMSprop']:
+for solver in ['RMSprop', 'GD']:
     model_raised = Model(t, baseline_init, alpha_init, m_init, sigma_init, dt,
                          kernel_name=kernel_name, loss_name=loss_name,
                          lower=lower, upper=upper)
@@ -81,7 +85,7 @@ plt.show()
 # %% to compare, plot loss as a function of iteration
 fig = plt.figure(figsize=figsize)
 for method, hist in dict_hist.items():
-    plt.plot(hist['loss'], label=method)
+    plt.semilogy(hist['loss'] - hist['loss'].min(), label=method)
 
 plt.legend()
 plt.xlabel("Iterations")

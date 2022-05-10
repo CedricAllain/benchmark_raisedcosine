@@ -87,7 +87,45 @@ def truncated_gaussian_kernel(t, alpha, m, sigma, lower, upper):
     return torch.stack(kernels, 0).float()
 
 
-def compute_kernels(t, alpha, m, sigma, kernel_name='raised_cosine',
+def exponential_kernel(t, alpha, gamma, lower, upper):
+    """Compute the truncated normal distribution kernel.
+
+    Parameters
+    ----------
+    t : tensor | array-like
+        timepoints to compute kernel value at
+
+    params : tensor | tuple
+        model parameters (baseline, alpha, gamma)
+
+    lower, upper : floats
+        truncation values of kernel's support
+
+    Returns
+    -------
+    tensor
+    """
+
+    t = check_tensor(t)
+    dt = t[1] - t[0]
+    alpha = check_tensor(alpha)
+    gamma = check_tensor(gamma)
+
+    n_drivers = gamma.shape[0]
+    kernels = []
+    for i in range(n_drivers):
+        kernel = gamma * torch.exp(- gamma * t)
+        kernel = kernel + 0
+        mask_kernel = (t < lower) | (t > upper)
+        kernel[mask_kernel] = 0.
+        kernel /= (kernel.sum() * dt)
+        kernel *= alpha[i]
+        kernels.append(kernel)
+
+    return torch.stack(kernels, 0).float()
+
+
+def compute_kernels(t, alpha, m, sigma=None, kernel_name='raised_cosine',
                     lower=None, upper=None):
     """
 
@@ -97,11 +135,16 @@ def compute_kernels(t, alpha, m, sigma, kernel_name='raised_cosine',
 
     """
     if kernel_name == 'gaussian':
+        assert sigma is not None
         kernels = truncated_gaussian_kernel(
             t, alpha, m, sigma, lower, upper)
     elif kernel_name == 'raised_cosine':
+        assert sigma is not None
         kernels = raised_cosine_kernel(
             t, alpha, m, sigma)
+    elif kernel_name == 'exponential':
+        kernels = exponential_kernel(
+            t, alpha, m, lower, upper)
     else:
         raise ValueError(
             f"kernel_name must be 'gaussian' | 'raised_cosine',"
