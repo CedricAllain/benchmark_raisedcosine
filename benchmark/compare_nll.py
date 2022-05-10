@@ -1,4 +1,5 @@
 # %%
+import numpy as np
 import pandas as pd
 import torch
 import matplotlib.pyplot as plt
@@ -29,7 +30,7 @@ T = 10_000
 L = 100
 
 
-def procedure(T, L):
+def procedure(T, L, verbose=False):
     dt = 1 / L
     p_task = 0.6
     t = torch.arange(0, 1, dt)
@@ -38,17 +39,16 @@ def procedure(T, L):
         baseline, alpha, m, sigma, kernel_name=kernel_name,
         simu_params=[T, L, p_task], lower=lower, upper=upper, isi=isi, seed=0)
 
-    print('L=', L)
-    print('T=', T)
-    print(len(driver_tt[0]), len(driver[0][driver[0] == 1]))
-    print(len(driver_tt[1]), len(driver[1][driver[1] == 1]))
-    print(len(acti_tt), len(acti[acti == 1]))
-
     # initialize parameters
     init_params = initialize(driver_tt, acti_tt, T, initializer='smart_start',
                              lower=lower, upper=upper,
                              kernel_name=kernel_name)
     baseline_init, alpha_init, m_init, sigma_init = init_params
+
+    # close form of the integral
+    integ = baseline_init * T
+    for this_alpha, this_driver_tt in zip(alpha_init, driver_tt):
+        integ += this_alpha * len(this_driver_tt)
 
     # %% compute nll with DriPP without discretization
     kernel = [TruncNormKernel(lower, upper, use_dis=False)
@@ -56,9 +56,11 @@ def procedure(T, L):
     intensity = Intensity(kernel=kernel, driver_tt=driver_tt, acti_tt=acti_tt)
     intensity.update(baseline_init, alpha_init, m_init, sigma_init)
     nll_dripp_cont = negative_log_likelihood(intensity, T)
+    log_intensity = np.log(intensity(intensity.acti_tt,
+                                     driver_delays=intensity.driver_delays)).sum()
 
-    # compute nll with DriPP without discretization
-    kernel = [TruncNormKernel(lower, upper, sfreq=150., use_dis=True)
+    # compute nll with DriPP with discretization
+    kernel = [TruncNormKernel(lower, upper, sfreq=L, use_dis=True)
               for _ in range(n_drivers)]
     intensity = Intensity(kernel=kernel, driver_tt=driver_tt, acti_tt=acti_tt)
     intensity.update(baseline_init, alpha_init, m_init, sigma_init)
@@ -69,13 +71,21 @@ def procedure(T, L):
     driver = check_tensor(driver).to(device)
     acti = check_tensor(acti).to(device).to(torch.bool)
 
-    model = Model(t, baseline_init, alpha_init, m_init, sigma_init, dt,
+    model = Model(t, baseline_init, alpha_init, m_init, sigma_init, dt=dt,
                   kernel_name=kernel_name, loss_name=loss_name,
                   lower=lower, upper=upper)
     model = model.to(device)
     intensity_torch = model(driver)
     nll_torch = compute_loss(
         model.loss_name, intensity_torch, acti, model.dt).item()
+    # compute integral estimation
+    if verbose:
+        print(f'L={L}, T={T}')
+        print("integ =", integ)
+        print("integ_est =", intensity_torch.sum()*dt)
+        print("log intensity at acti =", log_intensity)
+        print("torch log intensity at acti =",
+            torch.log(intensity_torch[acti]).sum())
 
     dict_res = dict(dripp_cont=nll_dripp_cont,
                     dripp_dis=nll_dripp_dis,
@@ -107,7 +117,7 @@ plt.xlim(min(T_list), max(T_list))
 plt.xlabel('T')
 plt.xscale('log')
 plt.xticks(T_list)
-plt.title(f'Diff of {loss_name} from dripp continuous')
+plt.title(f'{loss_name} from dripp continuous')
 plt.legend()
 plt.show()
 # %%

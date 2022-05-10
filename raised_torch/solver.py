@@ -195,7 +195,7 @@ def compute_loss(loss_name, intensity, acti, dt):
     -------
     XXX
     """
-    T = len(intensity) * dt
+    T = int(len(intensity) * dt)
     if loss_name == 'log-likelihood':
         # negative log-likelihood
         return (intensity.sum() * dt - torch.log(intensity[acti]).sum())/T

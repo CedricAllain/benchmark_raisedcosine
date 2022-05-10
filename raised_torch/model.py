@@ -30,14 +30,13 @@ class Model(nn.Module):
 
     """
 
-    def __init__(self, t, baseline, alpha, m, sigma, reparam=False, dt=1/100,
+    def __init__(self, t, baseline, alpha, m, sigma, dt=1/100,
                  kernel_name='raised_cosine', loss_name='log-likelihood',
                  lower=None, upper=None):
 
         super().__init__()
 
         self.kernel_name = kernel_name
-        self.reparam = reparam
 
         self.baseline = nn.Parameter(check_tensor(baseline))
         self.alpha = nn.Parameter(check_tensor(alpha))
