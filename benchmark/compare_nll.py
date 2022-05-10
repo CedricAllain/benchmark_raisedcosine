@@ -4,6 +4,8 @@ import pandas as pd
 import torch
 import matplotlib.pyplot as plt
 
+from joblib import Memory, Parallel, delayed
+
 from raised_torch.simu_pp import simu
 from raised_torch.model import Model
 from raised_torch.solver import initialize, compute_loss
@@ -12,10 +14,13 @@ from raised_torch.utils.utils import check_tensor
 from trunc_norm_kernel.model import TruncNormKernel, Intensity
 from trunc_norm_kernel.metric import negative_log_likelihood
 
+N_JOBS = 4
+
 # simulate data
 kernel_name = 'gaussian'
 loss_name = 'log-likelihood'
 max_iter = 400
+device = 'cpu'
 
 n_drivers = 2
 baseline = 1.
@@ -67,7 +72,6 @@ def procedure(T, L, verbose=False):
     nll_dripp_dis = negative_log_likelihood(intensity, T)
 
     # %% compute nll with torch
-    device = 'cpu'
     driver = check_tensor(driver).to(device)
     acti = check_tensor(acti).to(device).to(torch.bool)
 
@@ -85,7 +89,7 @@ def procedure(T, L, verbose=False):
         print("integ_est =", intensity_torch.sum()*dt)
         print("log intensity at acti =", log_intensity)
         print("torch log intensity at acti =",
-            torch.log(intensity_torch[acti]).sum())
+              torch.log(intensity_torch[acti]).sum())
 
     dict_res = dict(dripp_cont=nll_dripp_cont,
                     dripp_dis=nll_dripp_dis,
@@ -94,9 +98,11 @@ def procedure(T, L, verbose=False):
     return dict_res
 
 
-# %%
+# %% Compute loss difference while varying L (4.4 min)
 L_list = [100, 200, 500, 1_000]
-df_loss_L = pd.DataFrame([procedure(T, L) for L in L_list])
+df_loss_L = Parallel(n_jobs=N_JOBS, verbose=1)(
+            delayed(procedure)(T, this_L) for this_L in L_list)
+df_loss_L = pd.DataFrame(df_loss_L)
 
 for method in ['dripp_cont', 'dripp_dis', 'torch']:
     plt.plot(df_loss_L['L'], df_loss_L[method], label=method)
@@ -107,9 +113,11 @@ plt.title(f'{loss_name} obtained with 3 methods')
 plt.legend()
 plt.show()
 
-# %%
+# %% Compute loss difference while varying T (2.6 s)
 T_list = [100, 500, 1_000, 5_000, 10_000]
-df_loss_T = pd.DataFrame([procedure(T, L) for T in T_list])
+df_loss_T = Parallel(n_jobs=N_JOBS, verbose=1)(
+            delayed(procedure)(this_T, L) for this_T in T_list)
+df_loss_T = pd.DataFrame(df_loss_T)
 
 for method in ['dripp_cont', 'dripp_dis', 'torch']:
     plt.plot(df_loss_T['T'], df_loss_T[method], label=method)
