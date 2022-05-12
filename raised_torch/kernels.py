@@ -4,6 +4,7 @@
 
 import numpy as np
 import torch
+from scipy.stats import truncnorm
 
 from .utils.utils import check_tensor
 

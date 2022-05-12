@@ -40,17 +40,20 @@ class Model(nn.Module):
 
         self.baseline = nn.Parameter(check_tensor(baseline))
         self.alpha = nn.Parameter(check_tensor(alpha))
-        if self.kernel_name == 'gaussian':
+        if (self.kernel_name == 'gaussian') or (self.kernel_name == 'exponential'):
             self.m = nn.Parameter(check_tensor(m))
         elif self.kernel_name == 'raised_cosine':
             # reparametrazion, u = m - sigma
             self.m = nn.Parameter(check_tensor(m) - check_tensor(sigma))
         else:
             raise ValueError(
-                "kernel_name must be 'gaussian' | 'raised_cosine',"
+                "kernel_name must be 'gaussian' | 'raised_cosine' | 'exponential',"
                 f" got '{self.kernel_name}'"
             )
-        self.sigma = nn.Parameter(check_tensor(sigma))
+        if sigma is not None:
+            self.sigma = nn.Parameter(check_tensor(sigma))
+        else:
+            self.sigma = None
 
         self.lower = lower
         self.upper = upper

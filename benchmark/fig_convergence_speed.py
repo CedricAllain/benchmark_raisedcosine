@@ -60,14 +60,14 @@ for solver, use_dis in zip(['EM_dis', 'EM_cont'], [True, False]):
 
 
 # %% learn with torch
-for solver in ['RMSprop', 'GD']:
-    model_raised = Model(t, baseline_init, alpha_init, m_init, sigma_init, dt,
-                         kernel_name=kernel_name, loss_name=loss_name,
-                         lower=lower, upper=upper)
-    res_dict = training_loop(model_raised, driver, acti, solver=solver,
-                             step_size=1e-3, max_iter=max_iter, test=False,
-                             logging=True, device='cpu')
-    dict_hist[solver] = pd.DataFrame(res_dict['hist'])
+# for solver in ['RMSprop', 'GD']:
+#     model_raised = Model(t, baseline_init, alpha_init, m_init, sigma_init,
+#                          dt=dt, kernel_name=kernel_name, loss_name=loss_name,
+#                          lower=lower, upper=upper)
+#     res_dict = training_loop(model_raised, driver, acti, solver=solver,
+#                              step_size=1e-3, max_iter=max_iter, test=False,
+#                              logging=True, device='cpu')
+#     dict_hist[solver] = pd.DataFrame(res_dict['hist'])
 
 # %% plot final figure
 figsize = (14, 8)

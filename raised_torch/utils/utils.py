@@ -85,4 +85,5 @@ def kernel_intensity(baseline, driver, kernels, L=100):
     intensity = baseline + torch.conv_transpose1d(
         driver[None], kernels[:, None]
     )[0, 0, :-L+1]
+    # intensity = torch.concat([torch.zeros(1), intensity])
     return intensity.clip(0)
