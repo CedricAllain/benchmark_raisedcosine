@@ -106,7 +106,7 @@ class TruncNormKernel():
         """
 
         if (self.sfreq is None) or (not self.use_dis):
-            return self.eval(x, verbose=True)
+            return self.eval(x, verbose=False)
 
         x = np.asarray(x)
         x_idx = np.asarray(np.round((x - self.lower) * self.sfreq), dtype=int)
