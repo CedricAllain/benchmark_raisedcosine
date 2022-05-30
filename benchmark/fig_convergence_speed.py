@@ -11,14 +11,18 @@ import seaborn as sns
 
 from raised_torch.simu_pp import simu
 from raised_torch.model import Model
-from raised_torch.solver import initialize, training_loop
-from trunc_norm_kernel.optim import em_truncated_norm
+from raised_torch.solver import initialize, training_loop, compute_loss
+from raised_torch.kernels import compute_kernels
+from raised_torch.utils.utils import check_tensor, kernel_intensity
 
+from trunc_norm_kernel.optim import em_truncated_norm
+from trunc_norm_kernel.model import TruncNormKernel, Intensity
+from trunc_norm_kernel.metric import negative_log_likelihood
 
 # simulate data
 kernel_name = 'gaussian'
 loss_name = 'log-likelihood'
-max_iter = 400
+max_iter = 100
 
 baseline = 1.
 alpha = [1., 1.]
@@ -27,7 +31,7 @@ sigma = [0.2, 0.05]
 isi = [1, 1.4]
 lower, upper = 0, 0.8
 
-T = 100_000
+T = 10_000
 L = 100
 dt = 1 / L
 p_task = 0.9
@@ -60,11 +64,11 @@ for solver, use_dis in zip(['EM_dis', 'EM_cont'], [True, False]):
 
 
 # %% learn with torch
-for solver in ['RMSprop', 'GD']:
-    model_raised = Model(t, baseline_init, alpha_init, m_init, sigma_init, dt,
-                         kernel_name=kernel_name, loss_name=loss_name,
-                         lower=lower, upper=upper)
-    res_dict = training_loop(model_raised, driver, acti, solver=solver,
+model = Model(t, baseline_init, alpha_init, m_init, sigma_init,
+              dt=dt, kernel_name=kernel_name, loss_name=loss_name,
+              lower=lower, upper=upper, driver=driver)
+for solver in ['RMSprop']:  # , 'GD']:
+    res_dict = training_loop(model, driver, acti, solver=solver,
                              step_size=1e-3, max_iter=max_iter, test=False,
                              logging=True, device='cpu')
     dict_hist[solver] = pd.DataFrame(res_dict['hist'])
@@ -93,4 +97,23 @@ plt.ylabel("Loss")
 plt.title("Loss as a function of iterations")
 plt.show()
 
+# %%
+for method, hist in dict_hist.items():
+    print(hist['loss'][0])
+
+# %%
+kernel = [TruncNormKernel(lower, upper, sfreq=L, use_dis=True)
+          for _ in range(len(alpha))]
+intensity = Intensity(kernel=kernel, driver_tt=driver_tt, acti_tt=acti_tt)
+intensity.update(baseline_init, alpha_init, m_init, sigma_init)
+nll_dripp = negative_log_likelihood(intensity, T)
+print(f"nll_dripp = {nll_dripp}")
+
+kernel_support = torch.arange(lower, upper, dt)
+kernels_torch = compute_kernels(
+    kernel_support, alpha_init, m_init, sigma_init, "gaussian", lower, upper, dt)
+intensity_torch = kernel_intensity(baseline_init, driver, kernels_torch, L)
+nll_torch = compute_loss("log-likelihood", intensity_torch,
+                         acti, dt, model).detach().numpy()
+print(f"nll_torch = {nll_torch}")
 # %%

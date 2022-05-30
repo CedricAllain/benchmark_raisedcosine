@@ -80,7 +80,7 @@ def simu(baseline, alpha, m, sigma, kernel_name='raised_cosine',
     # XXX: here only between 0 and 1
     t_value = np.linspace(0, 1, L + 1)[:-1]
     kernels = compute_kernels(
-        t_value, alpha, m, sigma, kernel_name, lower, upper)
+        t_value, alpha, m, sigma, kernel_name, lower, upper, dt)
 
     driver, driver_tt = simu_driver_tt(
         isi, n_drivers=len(alpha), p_task=p_task, T=T, L=L, seed=seed)

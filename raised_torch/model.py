@@ -32,7 +32,7 @@ class Model(nn.Module):
 
     def __init__(self, t, baseline, alpha, m, sigma, dt=1/100,
                  kernel_name='raised_cosine', loss_name='log-likelihood',
-                 lower=None, upper=None):
+                 lower=None, upper=None, driver=None):
 
         super().__init__()
 
@@ -40,30 +40,36 @@ class Model(nn.Module):
 
         self.baseline = nn.Parameter(check_tensor(baseline))
         self.alpha = nn.Parameter(check_tensor(alpha))
-        if self.kernel_name == 'gaussian':
+        if (self.kernel_name == 'gaussian') or (self.kernel_name == 'exponential'):
             self.m = nn.Parameter(check_tensor(m))
         elif self.kernel_name == 'raised_cosine':
             # reparametrazion, u = m - sigma
             self.m = nn.Parameter(check_tensor(m) - check_tensor(sigma))
         else:
             raise ValueError(
-                "kernel_name must be 'gaussian' | 'raised_cosine',"
+                "kernel_name must be 'gaussian' | 'raised_cosine' | 'exponential',"
                 f" got '{self.kernel_name}'"
             )
-        self.sigma = nn.Parameter(check_tensor(sigma))
+        if sigma is not None:
+            self.sigma = nn.Parameter(check_tensor(sigma))
+        else:
+            self.sigma = None
 
         self.lower = lower
         self.upper = upper
         self.register_buffer('t', t)
+        self.dt = dt
+        self.L = len(self.t)
+        self.loss_name = loss_name
+
+        self.n_driver_events = None
+        if driver is not None:
+            self.n_driver_events = [this_driver.sum().item() for this_driver in driver]
 
         # compute initial kernels
         self.kernels = compute_kernels(
             self.t, self.alpha, self.m, self.sigma, self.kernel_name,
-            self.lower, self.upper)
-
-        self.dt = dt
-        self.L = len(self.t)
-        self.loss_name = loss_name
+            self.lower, self.upper, self.dt)
 
     def forward(self, driver):
         """Function to be optimised (the intensity).,
@@ -81,6 +87,6 @@ class Model(nn.Module):
         # compute updated kernels
         self.kernels = compute_kernels(
             self.t, self.alpha, self.m, self.sigma, self.kernel_name,
-            self.lower, self.upper)
+            self.lower, self.upper, self.dt)
 
         return kernel_intensity(self.baseline, driver, self.kernels, self.L)

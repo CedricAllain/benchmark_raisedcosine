@@ -4,6 +4,8 @@
 
 import numpy as np
 import torch
+from torch.distributions.normal import Normal
+from scipy.stats import truncnorm
 
 from .utils.utils import check_tensor
 
@@ -47,7 +49,7 @@ def raised_cosine_kernel(t, alpha, u, sigma):
     return torch.stack(kernels, 0).float()
 
 
-def truncated_gaussian_kernel(t, alpha, m, sigma, lower, upper):
+def truncated_gaussian_kernel(t, alpha, m, sigma, lower, upper, dt):
     """Compute the truncated normal distribution kernel.
 
     Parameters
@@ -67,27 +69,31 @@ def truncated_gaussian_kernel(t, alpha, m, sigma, lower, upper):
     """
 
     t = check_tensor(t)
-    dt = t[1] - t[0]
     alpha = check_tensor(alpha)
     m = check_tensor(m)
     sigma = check_tensor(sigma)
 
     n_drivers = m.shape[0]
     kernels = []
+    norm_dist = Normal(torch.tensor([0.0]), torch.tensor([1.0]))
+
     for i in range(n_drivers):
         kernel = torch.exp((- torch.square(t - m[i]) /
                             (2 * torch.square(sigma[i]))))
         kernel = kernel + 0
         mask_kernel = (t < lower) | (t > upper)
         kernel[mask_kernel] = 0.
-        kernel /= (kernel.sum() * dt)
+        C = (norm_dist.cdf((torch.tensor(upper)-m[i])/sigma[i]) -
+             norm_dist.cdf((torch.tensor(lower)-m[i])/sigma[i])) * sigma[i] * np.sqrt(2*np.pi)
+        # kernel /= (kernel.sum() * dt)
+        kernel /= C
         kernel *= alpha[i]
         kernels.append(kernel)
 
     return torch.stack(kernels, 0).float()
 
 
-def exponential_kernel(t, alpha, gamma, lower, upper):
+def exponential_kernel(t, alpha, gamma, lower, upper, dt):
     """Compute the truncated normal distribution kernel.
 
     Parameters
@@ -107,7 +113,6 @@ def exponential_kernel(t, alpha, gamma, lower, upper):
     """
 
     t = check_tensor(t)
-    dt = t[1] - t[0]
     alpha = check_tensor(alpha)
     gamma = check_tensor(gamma)
 
@@ -126,7 +131,7 @@ def exponential_kernel(t, alpha, gamma, lower, upper):
 
 
 def compute_kernels(t, alpha, m, sigma=None, kernel_name='raised_cosine',
-                    lower=None, upper=None):
+                    lower=None, upper=None, dt=None):
     """
 
     Returns
@@ -137,14 +142,14 @@ def compute_kernels(t, alpha, m, sigma=None, kernel_name='raised_cosine',
     if kernel_name == 'gaussian':
         assert sigma is not None
         kernels = truncated_gaussian_kernel(
-            t, alpha, m, sigma, lower, upper)
+            t, alpha, m, sigma, lower, upper, dt)
     elif kernel_name == 'raised_cosine':
         assert sigma is not None
         kernels = raised_cosine_kernel(
             t, alpha, m, sigma)
     elif kernel_name == 'exponential':
         kernels = exponential_kernel(
-            t, alpha, m, lower, upper)
+            t, alpha, m, lower, upper, dt)
     else:
         raise ValueError(
             f"kernel_name must be 'gaussian' | 'raised_cosine',"
