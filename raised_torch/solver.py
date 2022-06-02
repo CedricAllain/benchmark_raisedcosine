@@ -183,7 +183,7 @@ def initialize(driver_tt, acti_tt, T, initializer='smart_start', lower=0,
     return init_params
 
 
-def compute_loss(loss_name, intensity, acti, dt, model=None, driver=None):
+def compute_loss(loss_name, intensity, model, acti, T, driver=None):
     """
 
     Parameters
@@ -195,23 +195,19 @@ def compute_loss(loss_name, intensity, acti, dt, model=None, driver=None):
     -------
     XXX
     """
-    T = int(len(intensity) * dt)
     if loss_name == 'log-likelihood':
         # first evaluate intensity integral
-        if model is not None:
-            nll = model.baseline * T
-            n_driver_events = model.n_driver_events
-            if driver is not None:
-                n_driver_events = [this_driver.sum().item()
-                                   for this_driver in driver]
-            for this_alpha, this_n in zip(model.alpha, n_driver_events):
-                nll += this_alpha * this_n
-        else:
-            nll = intensity.sum() * dt
+        nll = model.baseline * T
+        n_driver_events = model.n_driver_events
+        if driver is not None:
+            n_driver_events = [this_driver.sum().item()
+                                for this_driver in driver]
+        for this_alpha, this_n in zip(model.alpha, n_driver_events):
+            nll += this_alpha * this_n
         # negative log-likelihood
         return (nll - torch.log(intensity[np.where(acti)[0]]).sum())/T
     elif loss_name == 'MSE':
-        return ((intensity ** 2).sum() * dt - 2 * (intensity[acti]).sum())/T
+        return ((intensity ** 2).sum() * model.dt - 2 * (intensity[acti]).sum())/T
     else:
         raise ValueError(
             f"loss must be 'MLE' or 'log-likelihood', got '{loss_name}'"
@@ -268,7 +264,7 @@ def closure(model, driver_tt_train, acti_tt_train, optimizer):
     return v_loss
 
 
-def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,
+def training_loop(model, driver_tt, acti_tt, T=None, solver='RMSProp', step_size=1e-3,
                   max_iter=100, test=0.3, logging=True, device='cpu'):
     """Training loop for torch model.
 
@@ -278,7 +274,7 @@ def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,
         [mu_0, alpha_true, mu_true, sig_true]
 
     device : str
-        'cpu' | 'cuda:0' # cuda:x
+        'cpu' | 'cuda:0'  # cuda:x
 
     Returns
     -------
@@ -288,6 +284,9 @@ def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,
 
     driver_tt = check_tensor(driver_tt).to(device)
     acti_tt = check_tensor(acti_tt).to(device)
+
+    if T is None:
+        T = int(np.round(len(acti_tt)*model.dt))
 
     model = model.to(device)
 
@@ -299,9 +298,13 @@ def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,
 
         acti_tt_train = acti_tt[:-n_test]
         acti_tt_test = acti_tt[-n_test:].to(torch.bool)
+        T_test = int(np.round(T*test))
+        T_train = T - T_test
+
     else:
         driver_tt_train = driver_tt
         acti_tt_train = acti_tt
+        T_train = T
 
     driver_t = driver_tt_train.to(torch.bool)
     acti_tt_train = acti_tt_train.to(torch.bool)
@@ -330,17 +333,25 @@ def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,
         else:
             opt.zero_grad()
             intensity = model(driver_tt_train)
-            v_loss = compute_loss(
-                model.loss_name, intensity, acti_tt_train, model.dt, model,
-                driver_tt_train)
+            # v_loss = compute_loss(
+            #     model.loss_name, intensity, acti_tt_train, model.dt, model,
+            #     driver_tt_train)
+            v_loss = model.compute_loss(
+                intensity, acti=acti_tt_train, T=T_train,
+                driver=driver_tt_train)
+
             if test:
                 intensity_test = model(driver_tt_test)
             if logging:
                 hist[-1].update(loss=v_loss.cpu().item())
                 if test:
-                    hist[-1].update(loss_test=compute_loss(
-                        model.loss_name, intensity_test,
-                        acti_tt_test, model.dt, model, driver_tt_test).item())
+                    # loss_test = compute_loss(
+                    #     model.loss_name, intensity_test,
+                    #     acti_tt_test, model.dt, model, driver_tt_test).item()
+                    loss_test = model.compute_loss(
+                        intensity_test, acti=acti_tt_test, T=T_test,
+                        driver=driver_tt_test).item()
+                    hist[-1].update(loss_test=loss_test)
             v_loss.backward()
             opt.step()
 
@@ -384,8 +395,10 @@ def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,
                 'compute_time': end_time}
 
     # compute final loss
-    v_loss = compute_loss(model.loss_name, intensity, acti_tt_train, model.dt,
-    model, driver_tt_train)
+    # v_loss = compute_loss(model.loss_name, intensity, acti_tt_train, model.dt,
+    # model, driver_tt_train)
+    v_loss = model.compute_loss(
+        intensity, acti=acti_tt_train, T=T_train, driver=driver_tt_train)
     if test:
         intensity_test = model(driver_tt_test)
         res_dict.update(test_intensity=intensity_test.detach().cpu(),
@@ -402,9 +415,13 @@ def training_loop(model, driver_tt, acti_tt, solver='RMSProp', step_size=1e-3,
         if model.kernel_name != 'exponential':
             hist[-1].update(sigma=model.sigma.detach().cpu().numpy())
         if test:
-            hist[-1].update(loss_test=compute_loss(
-                model.loss_name, intensity_test,
-                acti_tt_test, model.dt, model, driver_tt_test).item())
+            # loss_test = compute_loss(
+            #     model.loss_name, intensity_test,
+            #     acti_tt_test, model.dt, model, driver_tt_test).item()
+            loss_test = model.compute_loss(
+                intensity_test, acti=acti_tt_test, T=T_test,
+                driver=driver_tt_test).item()
+            hist[-1].update(loss_test=loss_test)
 
     res_dict['hist'] = hist
 
