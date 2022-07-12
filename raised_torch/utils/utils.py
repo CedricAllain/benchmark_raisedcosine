@@ -87,3 +87,45 @@ def kernel_intensity(baseline, driver, kernels, L=100):
     )[0, 0, :-L+1]
     # intensity = torch.concat([torch.zeros(1), intensity])
     return intensity.clip(0)
+
+def grid_projection(events, L, remove_duplicates=False, verbose=False):
+    """Project on a grid of step 1/L the given events
+
+    Parameters
+    ----------
+    events : array-like
+        the event timestamps to project on the grid
+
+    L : int
+        grid frequency, e.g., with L = 100, the grid will be defined with a
+        step of 0.01
+
+    remove_duplicates : bool
+        if True, remove duplicates renders by grid projection
+
+    verbose : bool
+
+    Returns
+    -------
+    events_grid : numpy array
+        the input events projected on the given grid
+    """
+    def procedure(events):
+        events_grid = np.array([np.round(tt * L).astype(int) / L
+                                for tt in events])
+        if remove_duplicates:
+            events_grid = np.unique(events_grid)
+            diff_len = len(events) - len(events_grid)
+            p_lost = diff_len / len(events)
+            if verbose:
+                print(f"grid projection (L = {L}) renders {diff_len} duplicates "
+                      f"({p_lost * 100}%) that were removed.")
+
+        return events_grid
+
+    if type(events[0]) is not np.ndarray:
+        return procedure(events)
+    else:  # events is a multidim array
+        return [procedure(this_events) for this_events in events]
+
+

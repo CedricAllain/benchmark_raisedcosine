@@ -278,11 +278,9 @@ def em_truncated_norm(acti_tt, driver_tt=None,
     res_params : tuple of size 4
         Values of learned parameters baseline, alpha, m and sigma.
 
-    history_params : dict of array-like
-        For every learned parameter, its history over all EM iterations.
-
-    hist_loss : 1d numpy.array
-        Value of the negative log-likelihood over all EM iterations.
+    hist: pandas.DataFrame
+        contains all history for each parameter, as well as the loss, if
+        compute_loss is True
     """
 
     acti_tt = check_acti_tt(acti_tt)

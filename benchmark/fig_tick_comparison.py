@@ -30,10 +30,10 @@ max_iter = 1_000
 N_JOBS = 4
 dt = 1/L
 lower, upper = 0, 1
-t_values = np.arange(lower, upper, dt)
+t_values = np.arange(lower, upper, step=dt)
 baseline = 1
-alpha = 0.5
-gamma = 5
+alpha = 5
+gamma = 5  # exponential law parameter (inverse of expectation)
 EPS = 0.01
 assert np.exp(-gamma * upper) < EPS
 exp_kernel = alpha * gamma * np.exp(-gamma * t_values)
@@ -48,13 +48,15 @@ plt.xlim(lower, upper)
 plt.ylim(0, None)
 plt.show()
 
+# %%
+
 
 def procedure(T, L, seed=0, plot=False, verbose=False):
     # Simulate data
-    hawkes = SimuHawkes(baseline=np.array([baseline]), end_time=T, verbose=False,
-                        seed=None, force_simulation=True)
+    hawkes = SimuHawkes(baseline=np.array([baseline]), end_time=T,
+                        verbose=False, seed=seed, force_simulation=True)
     hawkes.set_kernel(0, 0, HawkesKernelExp(alpha, gamma))
-    hawkes.track_intensity(dt)
+    hawkes.track_intensity(1/L)
     start = time.time()
     if verbose:
         print(f"Simulate data with Tick...\r", end='', flush=True)
@@ -63,7 +65,7 @@ def procedure(T, L, seed=0, plot=False, verbose=False):
     if verbose:
         print(f"Simulate data with Tick... done ({end_time:.3f} s.) ")
 
-    intensity = hawkes.tracked_intensity
+    intensity = hawkes.tracked_intensity  # vector of size (T*L + ?)
     # intensity_times = hawkes.intensity_tracked_times
     if plot:
         fig, ax = plt.subplots(1, 1, figsize=(10, 4))
@@ -76,8 +78,9 @@ def procedure(T, L, seed=0, plot=False, verbose=False):
     driver_tt = hawkes.timestamps
 
     # Learn with tick
-    em = HawkesEM(upper, kernel_size=(upper*L), n_threads=N_JOBS, verbose=True,
-                  tol=1e-3, max_iter=max_iter, record_every=1)
+    em = HawkesEM(kernel_support=upper, kernel_size=(upper*L),
+                  n_threads=N_JOBS, verbose=True, tol=1e-3, max_iter=max_iter,
+                  record_every=1)
 
     start = time.time()
     if verbose:
@@ -88,9 +91,10 @@ def procedure(T, L, seed=0, plot=False, verbose=False):
         print(f"Fitting model... done ({tick_time:.3f} s.) ")
 
     tick_history = em.get_history()
+    tick_loss = em.score(driver_tt)
     if verbose:
-        print(f'Tick solved in {len(tick_history['n_iter'])} iterations')
-        print(f'Final log-likelihood with Tick: {em.score(driver_tt)}')
+        print(f"Tick solved in {len(tick_history['n_iter'])} iterations")
+        print(f"Final log-likelihood with Tick: {tick_loss}")
 
     if plot:
         fig = plot_hawkes_kernels(em, hawkes=hawkes, show=False)
@@ -126,38 +130,54 @@ def procedure(T, L, seed=0, plot=False, verbose=False):
               baseline_init, alpha_init, gamma_init)
 
     t = torch.arange(lower, upper, dt)
+    loss_name = 'log-likelihood'  # log-likelihood | MLE
     model_raised = Model(t, baseline_init, alpha_init, gamma_init,
                          sigma_init, dt=dt,
-                         kernel_name="exponential", loss_name='log-likelihood',
+                         kernel_name="exponential", loss_name=loss_name,
                          lower=lower, upper=upper)
     if verbose:
-        print(
-            f'Discretization makes lose {int(len(driver_tt[0])-driver.sum())} driver events')
-
-    res_dict = training_loop(model_raised, driver, driver[0], solver="RMSprop",
-                             step_size=1e-3, max_iter=max_iter, test=False,
-                             logging=plot, device='cpu')
+        print(f"Discretization makes lose {int(len(driver_tt[0])-driver.sum())}\
+                driver events")
+    solver = 'GD'  # GD | RMSprop
+    res_dict = training_loop(model_raised, driver, driver[0], solver=solver,
+                             step_size=1e-6, max_iter=max_iter, test=False,
+                             logging=True, device='cpu')
     torch_time = res_dict['compute_time']
+    torch_loss = -res_dict['hist'][-1]['loss']
+    print(f"Final log-likelihood with Torch: {torch_loss}")
 
     if plot:
         df_hist = pd.DataFrame(res_dict['hist'])
-        plt.plot(df_hist['time_loop'], df_hist['loss'], label=method)
+        plt.plot(df_hist['time_loop'], df_hist['loss'], label='torch')
+        plt.xlabel('Computation time (s.)')
+        plt.ylabel('Loss')
         plt.show()
 
-    return dict(T=T, L=L, tick=tick_time, torch=torch_time)
+        # plot learned kernel
+        plt.plot(t_values, res_dict['est_kernel'][0], label="Learned kernel")
+        plt.plot(t_values, exp_kernel, label="True kernel", linestyle='--')
+        plt.legend()
+        plt.title(f"True exponential kernel with gamma={gamma}")
+        plt.xlabel('t')
+        plt.xlim(lower, upper)
+        plt.ylim(0, None)
+        plt.show()
+
+    return dict(T=T, L=L, tick_time=tick_time, torch_time=torch_time, tick_loss=tick_loss, torch_loss=torch_loss)
 
 
-procedure(T=1_000, L=100, seed=0, plot=True, verbose=True)
+procedure(T=1_000, L=200, seed=0, plot=True, verbose=True)
 # %%
 T_list = [100, 500, 1_000, 5_000, 10_000]
 df_T = Parallel(n_jobs=N_JOBS, verbose=1)(
-    delayed(procedure)(this_T, L, seed=0) for this_T in T_list)
+    delayed(procedure)(this_T, L=100, seed=0) for this_T in T_list)
+# df_T = [procedure(this_T, L, seed=0) for this_T in T_list]
 df_T = pd.DataFrame(df_T)
 print(df_T)
 # %%
 
 for method in ['tick', 'torch']:
-    plt.plot(df_T['T'], df_T[method], label=method)
+    plt.plot(df_T['T'], df_T[method+'_time'], label=method)
 plt.xlim(min(T_list), max(T_list))
 plt.xlabel('T')
 plt.ylabel('Computation time (s.)')
@@ -166,19 +186,46 @@ plt.xticks(T_list)
 plt.title('Computation time')
 plt.legend()
 plt.show()
+
+for method in ['tick', 'torch']:
+    plt.plot(df_T['T'], df_T[method+'_loss'], label=method)
+plt.xlim(min(T_list), max(T_list))
+plt.xlabel('T')
+plt.ylabel('Log-likelihood')
+plt.xscale('log')
+plt.xticks(T_list)
+plt.title('Log-likelihood')
+plt.legend()
+plt.show()
 # %%
 L_list = [100, 200, 500, 1_000]
 df_L = Parallel(n_jobs=N_JOBS, verbose=1)(
     delayed(procedure)(T, this_L) for this_L in L_list)
+# df_L = []
+# for this_L in L_list:
+#     print(this_L)
+#     df_L.append(procedure(T=1_000, L=this_L, seed=0))
 df_L = pd.DataFrame(df_L)
 
+# %%
 for method in ['tick', 'torch']:
-    plt.plot(df_L['L'], df_L[method], label=method)
+    plt.plot(df_L['L'], df_L[method+'_time'], label=method)
 plt.xlim(min(L_list), max(L_list))
 plt.xlabel('L')
 plt.ylabel('Computation time (s.)')
 plt.xticks(L_list)
 plt.title('Computation time')
+plt.legend()
+plt.show()
+
+for method in ['tick', 'torch']:
+    plt.plot(df_L['L'], df_L[method+'_loss'], label=method)
+plt.xlim(min(L_list), max(L_list))
+plt.xlabel('L')
+plt.ylabel('Log-likelihood')
+plt.xscale('log')
+plt.xticks(L_list)
+plt.title('Log-likelihood')
 plt.legend()
 plt.show()
 # %%

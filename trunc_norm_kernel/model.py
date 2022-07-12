@@ -355,6 +355,8 @@ class Intensity():
 
         # get sfreq used for kernel initialization
         sfreq = self.kernel[0].sfreq
+        if sfreq is None:
+            sfreq = 1_000
         # for each kernel do a convolution with its events timestamps
         intensity_grid = []
         for p in range(self.n_drivers):

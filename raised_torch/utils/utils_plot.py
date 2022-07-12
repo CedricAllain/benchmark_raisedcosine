@@ -91,8 +91,10 @@ def plot_hist_params(hist, true_params):
     """
 
     colors = ['blue', 'orange', 'green']
-    fig, axes = plt.subplots(2, 2, figsize=(14, 8), sharex=True)
+    n_cols = 2
+    fig, axes = plt.subplots(2, n_cols, figsize=(14, 8), sharex=True)
     axes = axes.reshape(-1)
+    n_axes = len(axes)
 
     max_iter = len(hist)
 
@@ -109,6 +111,8 @@ def plot_hist_params(hist, true_params):
                     label=f'{param}, kernel {j+1}', color=colors[j])
             ax.hlines(true_params[param][j], 0, max_iter-1,
                       linestyles='--', color=colors[j], alpha=0.8)
+            if (i+1) in [n_axes-1, n_axes-2]:
+                ax.set_xlabel('Iterations')
 
         ax.set_xlim(0, max_iter-1)
         ax.legend()
