@@ -4,6 +4,7 @@ Only works for truncated gaussian kernel and negative log-likelihood loss.
 """
 
 # %%
+import numpy as np
 import pandas as pd
 import torch
 import matplotlib.pyplot as plt
@@ -68,7 +69,7 @@ model = Model(t, baseline_init, alpha_init, m_init, sigma_init,
               dt=dt, kernel_name=kernel_name, loss_name=loss_name,
               lower=lower, upper=upper, driver=driver)
 for solver in ['RMSprop']:  # , 'GD']:
-    res_dict = training_loop(model, driver, acti, solver=solver,
+    res_dict = training_loop(model, driver, acti, T, solver=solver,
                              step_size=1e-3, max_iter=max_iter, test=False,
                              logging=True, device='cpu')
     dict_hist[solver] = pd.DataFrame(res_dict['hist'])
@@ -101,7 +102,14 @@ plt.show()
 for method, hist in dict_hist.items():
     print(hist['loss'][0])
 
-# %%
+# %% Compute loss at init
+
+# initialize parameters
+init_params = initialize(driver_tt, acti_tt, T, initializer='smart_start',
+                         lower=lower, upper=upper,
+                         kernel_name=kernel_name)
+baseline_init, alpha_init, m_init, sigma_init = init_params
+
 kernel = [TruncNormKernel(lower, upper, sfreq=L, use_dis=True)
           for _ in range(len(alpha))]
 intensity = Intensity(kernel=kernel, driver_tt=driver_tt, acti_tt=acti_tt)
@@ -109,11 +117,42 @@ intensity.update(baseline_init, alpha_init, m_init, sigma_init)
 nll_dripp = negative_log_likelihood(intensity, T)
 print(f"nll_dripp = {nll_dripp}")
 
-kernel_support = torch.arange(lower, upper, dt)
-kernels_torch = compute_kernels(
-    kernel_support, alpha_init, m_init, sigma_init, "gaussian", lower, upper, dt)
-intensity_torch = kernel_intensity(baseline_init, driver, kernels_torch, L)
-nll_torch = compute_loss("log-likelihood", intensity_torch,
-                         acti, dt, model).detach().numpy()
-print(f"nll_torch = {nll_torch}")
+model = Model(t, baseline_init, alpha_init, m_init, sigma_init,
+              dt=dt, kernel_name=kernel_name, loss_name=loss_name,
+              lower=lower, upper=upper, driver=driver)
+intensity_torch = model(driver)
+nll_torch_ = model.compute_loss(intensity_torch, check_tensor(
+    acti).to(torch.bool), T, driver=driver)
+print(f"nll_torch_ = {nll_torch_}")
+
+log_sum_dripp = np.log(
+    intensity(intensity.acti_tt, driver_delays=intensity.driver_delays)).sum()
+log_sum_torch = torch.log(
+    intensity_torch[check_tensor(acti).to(torch.bool)]).sum()
+
+# %%
+
+kernels_torch = compute_kernels(model.t, model.alpha, model.m, model.sigma,
+                                model.kernel_name, model.lower, model.upper,
+                                model.dt)
+intensity_torch = baseline_init + torch.conv_transpose1d(
+    driver[None], kernels[:, None])[0, 0, :-L+1]
+
+T_list = [10, 100, 500, 1_000, 5_000, 10_000]
+acti = check_tensor(acti).to(torch.bool)
+diff = []
+for T_ in T_list:
+    acti_tt_ = intensity.acti_tt[intensity.acti_tt < T_]
+    log_sum_dripp = np.log(intensity(acti_tt_)).sum()
+    intensity_ = intensity_torch[:T_*L]
+    log_sum_torch = torch.log(intensity_[acti[:T_*L]]).sum().detach().numpy()
+    this_diff = np.abs(log_sum_dripp-log_sum_torch)/T_
+    print(this_diff)
+    diff.append(this_diff)
+
+plt.plot(T_list, diff)
+plt.xticks(T_list)
+plt.xscale('log')
+plt.xlim(min(T_list), max(T_list))
+plt.show()
 # %%

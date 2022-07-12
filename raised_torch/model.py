@@ -1,6 +1,8 @@
 ##########################################
 # Define the class of intensity function
 ##########################################
+import numpy as np
+import torch
 from torch import nn
 
 
@@ -50,6 +52,14 @@ class Model(nn.Module):
                 "kernel_name must be 'gaussian' | 'raised_cosine' | 'exponential',"
                 f" got '{self.kernel_name}'"
             )
+
+        if loss_name in ['MLE', 'log-likelihood']:
+            self.loss_name = loss_name
+        else:
+            raise ValueError(
+                f"loss must be 'MLE' or 'log-likelihood', got '{loss_name}'"
+            )
+
         if sigma is not None:
             self.sigma = nn.Parameter(check_tensor(sigma))
         else:
@@ -60,11 +70,11 @@ class Model(nn.Module):
         self.register_buffer('t', t)
         self.dt = dt
         self.L = len(self.t)
-        self.loss_name = loss_name
 
         self.n_driver_events = None
         if driver is not None:
-            self.n_driver_events = [this_driver.sum().item() for this_driver in driver]
+            self.n_driver_events = [this_driver.sum().item()
+                                    for this_driver in driver]
 
         # compute initial kernels
         self.kernels = compute_kernels(
@@ -90,3 +100,30 @@ class Model(nn.Module):
             self.lower, self.upper, self.dt)
 
         return kernel_intensity(self.baseline, driver, self.kernels, self.L)
+
+    def compute_loss(self, intensity, acti, T, driver=None):
+        """
+
+        Parameters
+        ----------
+        acti : torch.Tensor
+            sparse tensor, 1 where there is an activation
+
+        Returns
+        -------
+        XXX
+        """
+        if self.loss_name == 'log-likelihood':
+            # first evaluate intensity integral
+            nll = self.baseline * T
+            n_driver_events = self.n_driver_events
+            if driver is not None:
+                n_driver_events = [this_driver.sum().item()
+                                   for this_driver in driver]
+            for this_alpha, this_n in zip(self.alpha, n_driver_events):
+                nll += this_alpha * this_n
+            # negative log-likelihood
+            return (nll - torch.log(intensity[acti]).sum())/T
+        elif self.loss_name == 'MSE':
+            return ((intensity ** 2).sum() * self.dt
+                    - 2 * (intensity[acti]).sum())/T

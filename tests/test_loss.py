@@ -87,10 +87,10 @@ def procedure(T, L, driver_tt, acti_tt, alpha=[0]):
     print("log", log_intensity_torch, log_intensity)
 
     model = Model(kernel_support, baseline, alpha, m, sigma, dt=dt,
-              kernel_name="gaussian", loss_name='log-likelihood',
-              lower=lower, upper=upper, driver=driver)
-    loss_torch = compute_loss(
-        "log-likelihood", intensity_torch, acti, dt, model).detach().numpy()
+                  kernel_name="gaussian", loss_name='log-likelihood',
+                  lower=lower, upper=upper, driver=driver)
+    loss_torch = model.compute_loss(
+        intensity_torch, acti, T, driver=driver).detach().numpy()
     loss_dripp = negative_log_likelihood(intensity, T)
     print("loss", loss_torch, loss_dripp)
 
