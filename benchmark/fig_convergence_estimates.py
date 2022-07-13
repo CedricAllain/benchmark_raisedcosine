@@ -11,6 +11,8 @@ import torch
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from tick.hawkes import HawkesEM
+
 from raised_torch.simu_pp import simu
 from raised_torch.model import Model
 from raised_torch.solver import initialize, training_loop, compute_loss, optimizer
@@ -68,7 +70,7 @@ for this_L in L_list:
     dt = 1 / this_L
     driver = get_sparse_from_tt(driver_tt_, T, dt)
     acti = get_sparse_from_tt(acti_tt_, T, dt)
-    #
+    # Learn with torch solver
     t = torch.arange(lower, upper, dt)  # maximal kernel support
     model = Model(t, baseline_init, alpha_init, m_init, sigma_init,
                   dt, kernel_name, loss_name, lower, upper, driver)
@@ -76,6 +78,11 @@ for this_L in L_list:
                              step_size=1e-3, max_iter=100, test=False,
                              logging=True, device='cpu')
     dict_hist["L_"+str(this_L)] = pd.DataFrame(res_dict['hist'])
+    # Learn with Tick non-parametric EM (HawkesEM)
+    em = HawkesEM(4, kernel_size=this_L, n_threads=8,
+                  verbose=False, tol=1e-3, max_iter=100)
+    em.fit([acti_tt_])
+    em_baseline = em.baseline
 # %%
 
 
