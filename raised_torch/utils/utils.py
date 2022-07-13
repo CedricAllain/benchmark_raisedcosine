@@ -88,6 +88,7 @@ def kernel_intensity(baseline, driver, kernels, L=100):
     # intensity = torch.concat([torch.zeros(1), intensity])
     return intensity.clip(0)
 
+
 def grid_projection(events, L, remove_duplicates=False, verbose=False):
     """Project on a grid of step 1/L the given events
 
@@ -129,3 +130,17 @@ def grid_projection(events, L, remove_duplicates=False, verbose=False):
         return [procedure(this_events) for this_events in events]
 
 
+def get_sparse_from_tt(events, T, dt):
+    """
+    From a array of timestamps, get the associated sparse vector
+    """
+
+    def procedure(events):
+        sparse = np.arange(0, T + 1e-10, dt) * 0
+        sparse[(events / dt).astype(int)] += 1
+        return sparse
+
+    if type(events[0]) is not np.ndarray:
+        return procedure(events)
+    else:  # events is a multidim array
+        return [procedure(this_events) for this_events in events]

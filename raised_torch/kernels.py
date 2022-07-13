@@ -49,7 +49,7 @@ def raised_cosine_kernel(t, alpha, u, sigma):
     return torch.stack(kernels, 0).float()
 
 
-def truncated_gaussian_kernel(t, alpha, m, sigma, lower, upper, dt):
+def truncated_gaussian_kernel(t, alpha, m, sigma, lower, upper):
     """Compute the truncated normal distribution kernel.
 
     Parameters
@@ -142,7 +142,7 @@ def compute_kernels(t, alpha, m, sigma=None, kernel_name='raised_cosine',
     if kernel_name == 'gaussian':
         assert sigma is not None
         kernels = truncated_gaussian_kernel(
-            t, alpha, m, sigma, lower, upper, dt)
+            t, alpha, m, sigma, lower, upper)
     elif kernel_name == 'raised_cosine':
         assert sigma is not None
         kernels = raised_cosine_kernel(
