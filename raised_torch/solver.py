@@ -234,7 +234,7 @@ def optimizer(param, lr, solver='GD'):
     """
     if solver == 'GD':
         return optim.SGD(param, lr=lr)
-    elif solver == 'RMSprop':
+    elif solver == 'RMSProp':
         return optim.RMSprop(param, lr=lr)
     elif solver == 'Adam':
         return optim.Adam(param, lr=lr, betas=(0.5, 0.999))
