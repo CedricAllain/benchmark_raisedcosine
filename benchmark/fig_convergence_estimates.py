@@ -81,10 +81,11 @@ for this_L in L_list:
     # Learn with Tick non-parametric EM (HawkesEM)
     em = HawkesEM((upper-lower), kernel_size=this_L, n_threads=8,
                   verbose=False, tol=1e-3, max_iter=100)
-    em.fit([acti_tt_, np.array([]), np.array([])])
+    em.fit([acti_tt_, driver_tt_[0], driver_tt_[1]])
     em_baseline = em.baseline
-    plt.plot(t, em.get_kernel_values(0, 0, t))
-    plt.title("Kernel learned with HawkesEM")
+    plt.plot(t, em.get_kernel_values(0, 1, t))
+    plt.plot(t, em.get_kernel_values(0, 2, t))
+    plt.title("Kernels learned with HawkesEM")
     plt.show()
 # %%
 
