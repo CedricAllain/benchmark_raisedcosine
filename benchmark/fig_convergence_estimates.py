@@ -79,10 +79,13 @@ for this_L in L_list:
                              logging=True, device='cpu')
     dict_hist["L_"+str(this_L)] = pd.DataFrame(res_dict['hist'])
     # Learn with Tick non-parametric EM (HawkesEM)
-    em = HawkesEM(4, kernel_size=this_L, n_threads=8,
+    em = HawkesEM((upper-lower), kernel_size=this_L, n_threads=8,
                   verbose=False, tol=1e-3, max_iter=100)
-    em.fit([acti_tt_])
+    em.fit([acti_tt_, np.array([]), np.array([])])
     em_baseline = em.baseline
+    plt.plot(t, em.get_kernel_values(0, 0, t))
+    plt.title("Kernel learned with HawkesEM")
+    plt.show()
 # %%
 
 
