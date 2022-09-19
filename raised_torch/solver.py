@@ -201,7 +201,7 @@ def compute_loss(loss_name, intensity, model, acti, T, driver=None):
         n_driver_events = model.n_driver_events
         if driver is not None:
             n_driver_events = [this_driver.sum().item()
-                                for this_driver in driver]
+                               for this_driver in driver]
         for this_alpha, this_n in zip(model.alpha, n_driver_events):
             nll += this_alpha * this_n
         # negative log-likelihood
@@ -356,7 +356,7 @@ def training_loop(model, driver_tt, acti_tt, T=None, solver='RMSProp', step_size
             opt.step()
 
         # projections
-        # model.alpha.data = model.alpha.data.clip(0)
+        model.alpha.data = model.alpha.data.clip(0)
         if model.kernel_name == 'raised_cosine':
             # ensure kernel stays in R+
             model.m.data = model.m.data.clip(0)
