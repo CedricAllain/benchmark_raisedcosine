@@ -195,7 +195,8 @@ kernel_name = 'raised_cosine'
 loss_name = 'log-likelihood'
 L = 100
 dt = 1 / L
-t = torch.arange(lower, upper+dt, dt)
+# t = torch.arange(lower, upper+dt, dt)
+t = torch.arange(0, 2+dt, dt)
 recompute = True
 # get sparse driver vectors
 

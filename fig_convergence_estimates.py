@@ -127,6 +127,9 @@ def compute_discretization_error(T, L, seed, driver_tt, acti_tt, init_params,
     this_row = {'T': T, 'L': L, 'seed': seed,
                 'time_em': time_em,  # 'time_torch': time_torch,
                 # 'params_em': params_em, 'params_torch': params_torch,
+                **{k+'_em': v for k, v in params_em.items()},
+                **{k+'_true': v for k, v in true_params.items()},
+                **{k+'_cont': v for k, v in cont_params.items()},
                 **em_err_cont, **em_err_true}
     # **torch_err_cont, **torch_err_true}
 
@@ -191,10 +194,10 @@ def procedure(T, seed):
 # L_list.append(10**4)
 
 df = pd.DataFrame()
-list_seed = list(range(30))
+list_seed = list(range(50))
 for this_T in [1_000, 2_000]:
     print("T =", this_T)
-    new_dfs = Parallel(n_jobs=min(30, len(list_seed)), verbose=1)(
+    new_dfs = Parallel(n_jobs=min(50, len(list_seed)), verbose=1)(
         delayed(procedure)(this_T, this_seed) for this_seed in list_seed)
     new_dfs.append(df)
     df = pd.concat(new_dfs)
@@ -203,19 +206,24 @@ for this_T in [1_000, 2_000]:
 
 # %% Plot, for multiple discretization values, the obtained value of the
 
-df = pd.read_pickle('df_convergence_estimates.csv')
+df = pd.read_pickle('df_convergence_estimates_em.csv')
 
-for param in ['alpha', 'm', 'sigma']:
-    # for pre in ['em', 'torch']:
-    pre = 'em'
-    for suf in ['true', 'cont']:
-        col = (param + '_' + pre + '_err_' + suf)
-        df[col] = df[col].apply(lambda x: x[0])
+pre = 'em'
+cols = [param + '_' + pre + '_err_' + suf
+        for param in ['alpha', 'm', 'sigma']
+        for suf in ['true', 'cont']]
+
+params = ['alpha', 'm', 'sigma']
+cols += [p+suf for p in params for suf in ['_cont', '_true', '_em']]
+
+for col in cols:
+    df[col] = df[col].apply(lambda x: x[0])
 
 L_list = df['L'].unique()
+df_list = 1 / L_list
 
+%matplotlib inline
 
-# for pre in ['em', 'torch']:
 for pre in ['em']:
     for suf in ['true', 'cont']:
 
@@ -235,5 +243,42 @@ for pre in ['em']:
         plt.savefig("fig_convergence_estimates" + pre + "_" + suf + ".png")
         plt.show()
 
+
+cols_cont = [param + '_cont' for param in ['baseline', 'alpha', 'm', 'sigma']]
+sub_df_cont = df[(df['T'] == 1000)][cols_cont + ['T', 'L', 'seed']]
+sub_df_cont['type'] = 'continuous'
+sub_df_cont.rename(columns={col: col.replace('_cont', '') for col in cols_cont},
+                   inplace=True)
+
+cols_em = [param + '_em' for param in ['baseline', 'alpha', 'm', 'sigma']]
+sub_df_em = df[(df['T'] == 1000)][cols_em + ['T', 'L', 'seed']]
+sub_df_em['type'] = 'discrete'
+sub_df_em.rename(columns={col: col.replace('_em', '') for col in cols_em},
+                 inplace=True)
+
+sub_df = pd.concat([sub_df_cont, sub_df_em])
+
+# %%
+fig, axes = plt.subplots(2, 2, figsize=(14, 8))
+axes = axes.reshape(-1)
+
+for i, param in enumerate(['baseline', 'alpha', 'm', 'sigma']):
+    ax = axes[i]
+    y_true = df.iloc[0][param+'_true']
+    ax.hlines(y_true, L_list[0], L_list[-1],
+              linestyle='--', label="true value")
+
+    sns.lineplot(data=sub_df, x="L", y=param, hue="type",
+                 estimator='mean', ci='sd', ax=ax)
+    # sns.lineplot(data=sub_df, x="L", y=(param + '_em'), hue="T", ax=ax, color="green")
+    ax.legend()
+    ax.set_xscale('log')
+    ax.set_xlim(min(L_list), max(L_list))
+
+
+plt.suptitle(
+    f"Convergence of continuous and discrete estimates")
+plt.savefig("fig_convergence_estimates.png")
+plt.show()
 
 # %%

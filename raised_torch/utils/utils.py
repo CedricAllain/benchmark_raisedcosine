@@ -166,10 +166,16 @@ def get_non_param_estimation(kernel_support, kernel_size, acti_tt, driver_tt):
 
     em = HawkesEM(kernel_support=kernel_support, kernel_size=kernel_size,
                   n_threads=8, verbose=False, tol=1e-3, max_iter=100)
+    # from trunc_norm_kernel.model import TruncNormKernel
+    # kernel = TruncNormKernel(lower=0, upper=0.5, m=0.2,
+    #                          sigma=0.05, sfreq=100, use_dis=True)
+    # t_np = np.arange(0, 0.5, 1/50)
+    # em = HawkesEM(kernel_discretization=kernel(t_np), n_threads=8,
+    #               verbose=False, tol=1e-3, max_iter=100)
     events = [acti_tt]
     for this_driver_tt in driver_tt:
         events.append(this_driver_tt)
-        
+
     em.fit(events)
 
     return em
