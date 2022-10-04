@@ -261,10 +261,13 @@ else:
     df_res_torch.to_pickle(SAVE_RESULTS_PATH / 'df_res_torch.csv')
 # %% Plot results
 
+%matplotlib inline
+
 sfreq = cdl_params['sfreq']
 _, info = somato.load_data(sfreq=sfreq)
 
-plotted_atoms_list = [[0, 2, 7], [2, 7, 10], [1, 2, 4], [0, 7, 10]]
+# plotted_atoms_list = [[0, 2, 7], [2, 7, 10], [1, 2, 4], [0, 7, 10]]
+plotted_atoms_list = [[1, 2, 4]]
 
 fontsize = 8
 plt.rcParams.update(plt.rcParamsDefault)
@@ -335,57 +338,79 @@ for plotted_atoms in plotted_atoms_list:
     ax = fig.add_subplot(gs[:, -1:])
     ax.set_title('Intensity', fontsize=fontsize)
     for ii, kk in enumerate(plotted_atoms):
-        # # plot EM-learned intensities
-        # # select sub-df of interest
-        # df_temp = df_res_em[(df_res_em['atom'] == kk)
-        #                     & (df_res_em['lower'] == lower)
-        #                     & (df_res_em['upper'] == upper)]
+        # plot EM-learned intensities
+        # select sub-df of interest
+        df_temp = df_res_em[(df_res_em['atom'] == kk)
+                            & (df_res_em['lower'] == lower)
+                            & (df_res_em['upper'] == upper)]
 
-        # # if we save several values for n_iter
-        # if df_temp.shape[0] != 1:
-        #     # in case that there has been an early stopping
-        #     n_iter_temp = min(
-        #         n_iter, df_temp['n_iter'].values.max())
-        #     df_temp = df_temp[df_temp['n_iter'] == n_iter_temp]
+        # if we save several values for n_iter
+        if df_temp.shape[0] != 1:
+            # in case that there has been an early stopping
+            n_iter_temp = min(
+                n_iter, df_temp['n_iter'].values.max())
+            df_temp = df_temp[df_temp['n_iter'] == n_iter_temp]
 
-        # list_yy = []
-        # for i in df_temp.index:
-        #     # unpack parameters estimates
-        #     alpha = df_temp['alpha_hat'][i][0]
-        #     baseline = df_temp['baseline_hat'][i]
-        #     m = df_temp['m_hat'][i][0]
-        #     sigma = df_temp['sigma_hat'][i][0]
+        list_yy = []
+        for i in df_temp.index:
+            # unpack parameters estimates
+            alpha = df_temp['alpha_hat'][i][0]
+            baseline = df_temp['baseline_hat'][i]
+            m = df_temp['m_hat'][i][0]
+            sigma = df_temp['sigma_hat'][i][0]
 
-        #     # define kernel function
-        #     kernel = TruncNormKernel(lower, upper, m, sigma)
-        #     yy = baseline + alpha * kernel.eval(xx)
-        #     list_yy.append(yy)
+            # define kernel function
+            kernel = TruncNormKernel(lower, upper, m, sigma)
+            yy = baseline + alpha * kernel.eval(xx)
+            list_yy.append(yy)
 
-        # # plot torch
-        # df_temp_torch = df_res_torch[(df_res_torch['atom'] == kk)]
-        # baseline = check_tensor(df_temp_torch['baseline_hat'].iloc[0])
-        # alpha = df_temp_torch['alpha_hat'].iloc[0]
-        # m = df_temp_torch['m_hat'].iloc[0]
-        # sigma = df_temp_torch['sigma_hat'].iloc[0]
-        # kernel = raised_cosine_kernel(t=xx, alpha=alpha, u=m, sigma=sigma)
+        # plot torch
+        df_temp_torch = df_res_torch[(df_res_torch['atom'] == kk)]
+        baseline = check_tensor(df_temp_torch['baseline_hat'].iloc[0])
+        alpha = df_temp_torch['alpha_hat'].iloc[0]
+        m = df_temp_torch['m_hat'].iloc[0]
+        sigma = df_temp_torch['sigma_hat'].iloc[0]
+        kernel = raised_cosine_kernel(t=xx, alpha=alpha, u=m, sigma=sigma)
 
-        # label = '% d' % kk
-        # ax.plot(xx, yy, label=label, color=colors[ii])
-        # ax.plot(xx, baseline + kernel[0], color=colors[ii], linestyle='--')
+        label = '% d' % kk
+        ax.plot(xx, yy, label=label, color=colors[ii])
+        ax.plot(xx, baseline + kernel[0], color=colors[ii], linestyle='--')
 
         # Learn non parametric
+        kernel_support = 2
+        step_size = 0.1  # in FaDIn paper, step_size = 0.1
         em = get_non_param_estimation(
-            kernel_support=2, kernel_size=L*2, acti_tt=acti_tt[kk],
+            kernel_support=kernel_support,
+            kernel_size=int(kernel_support / step_size),
+            acti_tt=acti_tt[kk],
             driver_tt=[events_timestamps[1]])
         baseline_np = em.baseline[0]
-        ax.plot(xx, baseline_np + em.get_kernel_values(0, 1, xx),
-                color=colors[ii], linestyle='-', alpha=0.6)
+        t_np = np.arange(0, kernel_support, step=step_size) + step_size/2
+
+        ax.plot(t_np, baseline_np + em.get_kernel_values(0, 1, t_np),
+                color=colors[ii], linestyle='-.', alpha=0.4)
 
         ax.set_xlim(0, 2)
         ax.set_xlabel('Time (s)', fontsize=fontsize)
         ax.yaxis.set_ticks_position("right")
         # ax.set_yscale('log')
-        ax.legend(fontsize=fontsize, handlelength=1, title='Atom')
+
+    labels = ["TG", "RC", "NP"]
+    handles = [plt.Line2D([], [], c="k", ls="-", lw=1),
+               plt.Line2D([], [], c="k", ls="--", lw=1),
+               plt.Line2D([], [], c="k", ls="-.", lw=1)]
+    legend_stim = ax.legend(
+        handles,
+        labels,
+        ncol=len(labels),
+        # title="Stimulus",
+        bbox_to_anchor=(0, 1.25, 1, 0.01),
+        # loc="upper left",
+        fontsize=fontsize,
+    )
+    # ax.legend(fontsize=fontsize, handlelength=1)
+    plt.gca().add_artist(legend_stim)
+    # ax.legend(fontsize=fontsize, handlelength=1, title='Atom')
 
     # save figure
     suffix = 'atom'
