@@ -7,7 +7,7 @@ import numpy as np
 import torch
 
 from tick.base import TimeFunction
-from tick.hawkes import SimuHawkes
+from tick.hawkes import SimuHawkes, SimuPoissonProcess
 from tick.hawkes import HawkesKernelTimeFunc
 from tick.hawkes import SimuInhomogeneousPoisson
 from tick.plot import plot_point_process
