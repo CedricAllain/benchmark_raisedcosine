@@ -14,16 +14,16 @@ except ValueError:  # temporary, until alphacsc PR #102 is accepted
     from .camcan import load_data as load_data_camcan
 
 from config import CACHEDIR
+# from utils import post_process_cdl
 
 memory = Memory(CACHEDIR, verbose=0)
 
 
 @memory.cache(ignore=['n_jobs'])
 def _run_cdl_data(dataset='sample', subject_id=None,
-                  load_params=dict(sfreq=150., n_jobs=5), use_greedy=True,
+                  load_params=dict(sfreq=150.), use_greedy=True,
                   n_atoms=40, n_times_atom=None, reg=0.1,
-                  n_iter=100, eps=1e-4, tol_z=1e-3,
-                  save_results=False):
+                  n_iter=100, eps=1e-4, tol_z=1e-3, n_jobs=5):
     """Run a Greedy Convolutional Dictionary Learning on mne.[data_source]
     dataset.
 
@@ -170,15 +170,17 @@ def _run_cdl_data(dataset='sample', subject_id=None,
     # X = raw.get_data(picks=['meg'])
     # X_split = split_signal(X, n_splits=n_splits, apply_window=True)
 
+    print("Loading and preprocessing the data...", end=' ', flush=True)
+
     if dataset in ['sample', 'somato']:
         X_split, info = load_data_mne(dataset=dataset, **load_params)
 
         if dataset == 'sample':
             try:
-                info['temp']['event_des'].update(
+                info['temp']['event_id'].update(
                     {'auditory': (1, 2), 'visual': (3, 4)})
             except KeyError:  # temporary, until alphacsc PR #102 is accepted
-                info['temp']['event_des'] = {
+                info['temp']['event_id'] = {
                     'auditory/left': 1, 'auditory/right': 2,
                     'visual/left': 3, 'visual/right': 4,
                     'auditory': (1, 2), 'visual': (3, 4),
@@ -186,8 +188,10 @@ def _run_cdl_data(dataset='sample', subject_id=None,
 
     elif dataset == 'camcan':
         X_split, info = load_data_camcan(subject_id=subject_id, **load_params)
-        info['temp']['event_des'].update(
+        info['temp']['event_id'].update(
             {'audio': (1, 2, 3, 5), 'vis': (1, 2, 3, 6)})
+
+    print('done')
 
     sfreq = load_params['sfreq']
     if n_times_atom is None:
@@ -227,7 +231,7 @@ def _run_cdl_data(dataset='sample', subject_id=None,
         # Technical parameters
         'verbose': 1,
         'random_state': 0,
-        'n_jobs': load_params['n_jobs']
+        'n_jobs': n_jobs
     }
 
     if use_greedy:
@@ -237,6 +241,7 @@ def _run_cdl_data(dataset='sample', subject_id=None,
 
     # fit cdl model
     cdl.fit(X_split)
+    u_hat_, v_hat_ = cdl.u_hat_, cdl.v_hat_
     # compute atoms activation intensities
     n_splits, n_channels, n_times = X_split.shape
     X = X_split.swapaxes(0, 1).reshape(n_channels, n_times * n_splits)
@@ -251,9 +256,9 @@ def _run_cdl_data(dataset='sample', subject_id=None,
 
     dict_res = dict(
         cdl_params=cdl_params,
-        u_hat_=cdl.u_hat_, v_hat_=cdl.v_hat_, z_hat=z_hat,
+        u_hat_=u_hat_, v_hat_=v_hat_, z_hat=z_hat,
         events=info['temp']['events'],
-        event_id=info['temp']['event_des'].values(),
+        event_id=info['temp']['event_id'],
         sfreq=sfreq,
         # Duration of the experiment, in seconds
         T=(n_times * n_splits) / sfreq
@@ -306,20 +311,20 @@ def _run_cdl_data(dataset='sample', subject_id=None,
 def run_cdl_sample(sfreq=150., n_atoms=40, n_times_atom=150, reg=0.1,
                    n_iter=100, eps=1e-4, n_jobs=5, n_splits=10):
     """Run Convolutional Dictionary Learning on mne.sample."""
-    load_params = dict(sfreq=sfreq, n_jobs=n_jobs, n_splits=n_splits)
+    load_params = dict(sfreq=sfreq, n_splits=n_splits)
     return _run_cdl_data(dataset='sample', load_params=load_params,
                          n_atoms=n_atoms, n_times_atom=n_times_atom,
-                         reg=reg, n_iter=n_iter, eps=eps)
+                         reg=reg, n_iter=n_iter, eps=eps, n_jobs=n_jobs)
 
 
 def run_cdl_somato(sfreq=150., n_atoms=25, n_times_atom=75, reg=0.2,
                    n_iter=100, eps=1e-4, use_greedy=False, n_jobs=5,
                    n_splits=10):
     """Run Convolutional Dictionary Learning on mne.somato."""
-    load_params = dict(sfreq=sfreq, n_jobs=n_jobs, n_splits=n_splits)
+    load_params = dict(sfreq=sfreq, n_splits=n_splits)
     return _run_cdl_data(dataset='somato', load_params=load_params,
                          n_atoms=n_atoms, n_times_atom=n_times_atom,
-                         reg=reg, n_iter=n_iter, eps=eps)
+                         reg=reg, n_iter=n_iter, eps=eps, n_jobs=n_jobs)
 
 
 def run_cdl_camcan(subject_id="CC320428", sfreq=150., n_atoms=30,
@@ -335,9 +340,9 @@ def run_cdl_camcan(subject_id="CC320428", sfreq=150., n_atoms=30,
         'CC620264', a 76.33 year old woman.
 
     """
-    load_params = dict(sfreq=sfreq, n_jobs=n_jobs, n_splits=n_splits)
+    load_params = dict(sfreq=sfreq, n_splits=n_splits)
     return _run_cdl_data(dataset='camcan', subject_id=subject_id,
                          load_params=load_params, n_atoms=n_atoms,
                          n_times_atom=n_times_atom, reg=reg,
                          n_iter=n_iter, eps=eps, tol_z=tol_z,
-                         use_greedy=use_greedy)
+                         use_greedy=use_greedy, n_jobs=n_jobs)
